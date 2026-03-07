@@ -693,33 +693,53 @@ export default function Home() {
   const displayedNavires = naviresEnTraitement.filter(n => activeTab === 'en_cours' ? !n.isTermine : n.isTermine);
 
   return (
-    <main className="min-h-screen p-8 text-slate-800 bg-[#f8fafc] relative font-sans">
-      <div className="max-w-7xl mx-auto">
+    <main className="min-h-screen text-slate-800 relative font-sans" style={{ background: 'linear-gradient(145deg, #f1f5f9 0%, #e8eef7 50%, #f1f5f9 100%)' }}>
+      {/* Ambient background shapes */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full opacity-20" style={{ background: 'radial-gradient(circle, #bfdbfe 0%, transparent 70%)' }} />
+        <div className="absolute top-1/2 -left-20 w-[400px] h-[400px] rounded-full opacity-15" style={{ background: 'radial-gradient(circle, #a5f3fc 0%, transparent 70%)' }} />
+        <div className="absolute -bottom-20 right-1/3 w-[500px] h-[500px] rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #c7d2fe 0%, transparent 70%)' }} />
+      </div>
+
+      <div className="max-w-7xl mx-auto px-8 pt-10 pb-8">
         {/* Header */}
-        <header className="flex justify-between items-center mb-12">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 uppercase">
-            SUIVI DES NAVIRES
-          </h1>
+        <header className="flex justify-between items-start mb-10">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-2 h-8 rounded-full" style={{ background: 'linear-gradient(to bottom, #2563eb, #0ea5e9)' }} />
+              <h1 className="text-4xl font-extrabold tracking-tight" style={{ background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 60%, #0ea5e9 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                Suivi des Navires
+              </h1>
+            </div>
+            <p className="text-slate-500 text-sm font-medium ml-5">Direction des Services Maritimes — DSM</p>
+          </div>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="px-6 py-2.5 bg-blue-600 font-bold text-white rounded-xl shadow-lg shadow-blue-600/20 hover:bg-blue-700 hover:shadow-blue-600/30 transition-all hover:-translate-y-0.5 flex items-center gap-2"
+            className="flex items-center gap-2.5 text-white font-semibold text-sm rounded-2xl px-6 py-3 shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0"
+            style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', boxShadow: '0 4px 15px rgba(37, 99, 235, 0.35)' }}
           >
-            <Plus className="w-5 h-5" />
-            Navire à suivre
+            <Plus className="w-4.5 h-4.5" />
+            Nouveau Navire
           </button>
         </header>
 
         {/* Tabs */}
-        <div className="flex gap-4 mb-8 border-b border-slate-200">
+        <div className="flex gap-1 mb-8 p-1 rounded-2xl w-fit" style={{ background: 'rgba(226, 232, 240, 0.6)', backdropFilter: 'blur(8px)' }}>
           <button
             onClick={() => setActiveTab('en_cours')}
-            className={`px-4 py-3 font-bold text-sm transition-colors border-b-2 ${activeTab === 'en_cours' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+            className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === 'en_cours'
+              ? 'bg-white text-blue-700 shadow-sm shadow-blue-100'
+              : 'text-slate-500 hover:text-slate-700'
+              }`}
           >
             En cours
           </button>
           <button
             onClick={() => setActiveTab('termines')}
-            className={`px-4 py-3 font-bold text-sm transition-colors border-b-2 ${activeTab === 'termines' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+            className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === 'termines'
+              ? 'bg-white text-emerald-700 shadow-sm shadow-emerald-100'
+              : 'text-slate-500 hover:text-slate-700'
+              }`}
           >
             Terminés
           </button>
@@ -728,17 +748,39 @@ export default function Home() {
         {/* List of Navires */}
         <div className="space-y-4">
           {displayedNavires.length === 0 ? (
-            <div className="text-center py-12 text-slate-500 bg-white rounded-3xl border border-slate-200 border-dashed">
-              Aucun navire dans cette catégorie.
+            <div className="text-center py-16 rounded-3xl border-2 border-dashed border-slate-200 bg-white/50">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #eff6ff, #dbeafe)' }}>
+                <span className="text-3xl">⚓</span>
+              </div>
+              <p className="text-slate-500 font-medium">Aucun navire dans cette catégorie</p>
+              <p className="text-slate-400 text-sm mt-1">Cliquez sur "Nouveau Navire" pour commencer</p>
             </div>
           ) : (
             displayedNavires.map((traitement) => (
               <div
                 key={traitement.id}
-                className={`bg-slate-50 border shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[2rem] px-8 py-5 transition-shadow hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] relative overflow-hidden ${traitement.isTermine ? 'border-emerald-200' : 'border-slate-200/60'}`}
+                className={`bg-white rounded-[1.75rem] px-8 py-6 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 ${traitement.isTermine
+                  ? 'border border-emerald-200/70 shadow-[0_2px_20px_rgba(16,185,129,0.08),0_8px_40px_rgba(0,0,0,0.04)]'
+                  : 'border border-slate-200/80 shadow-[0_2px_20px_rgba(37,99,235,0.06),0_8px_40px_rgba(0,0,0,0.04)]'
+                  }`}
               >
-                {/* Decorative gradient blur in background */}
-                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-blue-50/50 blur-3xl -z-10 mix-blend-multiply"></div>
+                {/* Accent bar left + Decorative background */}
+                <div
+                  className="absolute left-0 top-0 h-full w-1.5 rounded-l-[1.75rem]"
+                  style={{
+                    background: traitement.isTermine
+                      ? 'linear-gradient(to bottom, #10b981, #34d399)'
+                      : 'linear-gradient(to bottom, #2563eb, #0ea5e9)'
+                  }}
+                />
+                <div
+                  className="absolute top-0 right-0 -mr-16 -mt-16 w-56 h-56 rounded-full -z-10"
+                  style={{
+                    background: traitement.isTermine
+                      ? 'radial-gradient(circle, rgba(16,185,129,0.06) 0%, transparent 70%)'
+                      : 'radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%)'
+                  }}
+                />
 
                 {/* Bouton de suppression global du suivi */}
                 <button

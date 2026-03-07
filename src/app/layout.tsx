@@ -1,20 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
 });
 
 export const metadata: Metadata = {
-  title: "Gestion des Navires",
-  description: "Suivi des navires et des opérations",
+  title: "Suivi des Navires — DSM",
+  description: "Suivi des navires et des opérations portuaires",
 };
 
 export default function RootLayout({
@@ -23,15 +20,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="fr">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex`}
+        className={`${inter.variable} antialiased flex`}
+        style={{ fontFamily: "var(--font-inter), sans-serif" }}
       >
         <Sidebar />
-        <div className="flex-1 ml-72 min-h-screen bg-white">
+        <div className="flex-1 ml-72 min-h-screen bg-[#f1f5f9]">
           {children}
         </div>
       </body>
     </html>
   );
 }
+
