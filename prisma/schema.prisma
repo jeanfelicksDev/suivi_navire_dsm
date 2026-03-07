@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Navire {
+  id             String       @id @default(cuid())
+  nomNavire      String
+  armateurCoque  String
+  voyages        Voyage[]
+  traitements    Traitement[]
+}
+
+model Voyage {
+  id           String       @id @default(cuid())
+  navireId     String
+  navire       Navire       @relation(fields: [navireId], references: [id], onDelete: Cascade)
+  numVoyage    String
+  dateETA      String
+  dateETD      String
+  traitements  Traitement[]
+  slotteurs    Slotteur[]
+
+  @@unique([navireId, dateETA])
+}
+
+model Slotteur {
+  id        String  @id @default(cuid())
+  nom       String
+  voyageId  String
+  voyage    Voyage  @relation(fields: [voyageId], references: [id], onDelete: Cascade)
+}
+
+model Traitement {
+  id           String    @id @default(cuid())
+  navireId     String
+  navire       Navire    @relation(fields: [navireId], references: [id], onDelete: Cascade)
+  voyageId     String
+  voyage       Voyage    @relation(fields: [voyageId], references: [id], onDelete: Cascade)
+  actions      Action[]
+  isTermine    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+}
+
+model Action {
+  id             String     @id @default(cuid())
+  traitementId   String
+  traitement     Traitement @relation(fields: [traitementId], references: [id], onDelete: Cascade)
+  action         String
+  isComplete     Boolean    @default(false)
+  dateCloture    String?
+  position       Int        @default(0)
+}
+
+model ActionTemplate {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  isReferentiel   Boolean  @default(false)
+  
+  // Deadline settings
+  nbreJours       Int?
+  periode         String?
+  evenementId     String?
+  joursOuvrable   Boolean  @default(false)
+  joursCalendaire Boolean  @default(false)
+  isNotification  Boolean  @default(false)
+}
+
+model Armateur {
+  id    String @id @default(cuid())
+  nom   String @unique
+}
