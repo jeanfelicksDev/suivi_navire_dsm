@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Calendar, Download, RefreshCw, Ship, AlertCircle } from "lucide-react";
+import { Calendar, Download, RefreshCw, Ship, AlertCircle, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 interface Action {
     id: string;
@@ -124,6 +125,12 @@ export default function MesureMensuellePage() {
         <div className="p-8 font-sans">
             <header className="mb-8 flex justify-between items-end">
                 <div>
+                    <Link href="/">
+                        <button className="flex items-center gap-2 text-slate-600 bg-white border border-slate-200 shadow-sm font-semibold text-sm rounded-xl px-4 py-2 mb-3 transition-all hover:bg-slate-50 hover:text-slate-800">
+                            <ArrowLeft className="w-4 h-4" />
+                            Retour aux Navires
+                        </button>
+                    </Link>
                     <h1 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
                         <Calendar className="w-8 h-8 text-blue-600" />
                         Mésure Mensuelle
