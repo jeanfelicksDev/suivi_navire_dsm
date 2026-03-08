@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Users, CheckCircle, XCircle, ArrowLeft, Trash2, Key, Copy } from "lucide-react";
+import { Users, CheckCircle, XCircle, ArrowLeft, Trash2, Key, Save } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminUsersPage() {
@@ -11,6 +11,8 @@ export default function AdminUsersPage() {
     const router = useRouter();
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [pendingPermissions, setPendingPermissions] = useState<Record<string, Record<string, boolean>>>({});
+    const [savingUsers, setSavingUsers] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         if (status === "unauthenticated") {
@@ -52,18 +54,38 @@ export default function AdminUsersPage() {
         }
     };
 
-    const togglePermission = async (userId: string, permission: string, value: boolean) => {
-        // Optimistic update
+    const togglePermission = (userId: string, permission: string, value: boolean) => {
+        // Update UI immediately (local only)
         setUsers(users.map(u => u.id === userId ? { ...u, [permission]: value } : u));
+        // Track the pending change
+        setPendingPermissions(prev => ({
+            ...prev,
+            [userId]: { ...(prev[userId] || {}), [permission]: value }
+        }));
+    };
+
+    const savePermissions = async (userId: string) => {
+        const pending = pendingPermissions[userId];
+        if (!pending || Object.keys(pending).length === 0) return;
+
+        setSavingUsers(prev => ({ ...prev, [userId]: true }));
         try {
             await fetch(`/api/admin/users/${userId}/permissions`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ [permission]: value }),
+                body: JSON.stringify(pending),
+            });
+            // Clear pending changes for this user
+            setPendingPermissions(prev => {
+                const next = { ...prev };
+                delete next[userId];
+                return next;
             });
         } catch (err) {
             console.error(err);
             fetchUsers(); // Revert on error
+        } finally {
+            setSavingUsers(prev => ({ ...prev, [userId]: false }));
         }
     };
 
@@ -184,6 +206,20 @@ export default function AdminUsersPage() {
                                             </label>
 
                                         </div>
+                                    )}
+                                    {user.profil !== 'ADMIN' && pendingPermissions[user.id] && Object.keys(pendingPermissions[user.id]).length > 0 && (
+                                        <button
+                                            onClick={() => savePermissions(user.id)}
+                                            disabled={savingUsers[user.id]}
+                                            className="mt-2 flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-purple-600 text-white hover:bg-purple-700 shadow transition disabled:opacity-60"
+                                        >
+                                            {savingUsers[user.id] ? (
+                                                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            ) : (
+                                                <Save className="w-3.5 h-3.5" />
+                                            )}
+                                            Sauvegarder
+                                        </button>
                                     )}
                                 </td>
                                 <td className="px-6 py-4 text-center">
