@@ -1,11 +1,25 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user) {
+            return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+        }
+
         const { id } = await params
         const body = await request.json()
         const { isComplete, dateCloture } = body
+
+        const existingAction = await prisma.action.findUnique({ where: { id }, include: { traitement: true } });
+        if (!existingAction) return NextResponse.json({ error: "Introuvable" }, { status: 404 });
+
+        if ((existingAction.traitement as any).userId !== (session.user as any).id) {
+            return NextResponse.json({ error: "Interdit. Seul le créateur peut modifier cette action." }, { status: 403 });
+        }
 
         const updatedAction = await prisma.action.update({
             where: { id },
@@ -48,7 +62,20 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user) {
+            return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+        }
+
         const { id } = await params
+
+        const existingAction = await prisma.action.findUnique({ where: { id }, include: { traitement: true } });
+        if (!existingAction) return NextResponse.json({ error: "Introuvable" }, { status: 404 });
+
+        if ((existingAction.traitement as any).userId !== (session.user as any).id) {
+            return NextResponse.json({ error: "Interdit. Seul le créateur peut supprimer cette action." }, { status: 403 });
+        }
+
         await prisma.action.delete({
             where: { id }
         })

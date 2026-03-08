@@ -21,6 +21,7 @@ export interface Action {
 
 export interface NavireEnTraitement {
     id: string;
+    userId?: string | null;
     navire: Navire;
     voyage: Voyage;
     actions: Action[];

@@ -17,9 +17,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         const existingTraitement = await prisma.traitement.findUnique({ where: { id } });
         if (!existingTraitement) return NextResponse.json({ error: "Introuvable" }, { status: 404 });
 
-        const isAdmin = (session.user as any).role === "ADMIN";
-        if (!isAdmin && existingTraitement.userId !== (session.user as any).id) {
-            return NextResponse.json({ error: "Interdit" }, { status: 403 });
+        if ((existingTraitement as any).userId !== (session.user as any).id) {
+            return NextResponse.json({ error: "Interdit. Seul le créateur peut ajouter une action." }, { status: 403 });
         }
 
         const newAction = await prisma.action.create({

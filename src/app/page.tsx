@@ -177,7 +177,8 @@ function SortableAction({
   handleReactivateAction,
   handleDeleteAction,
   toggleHideAction,
-  deadline
+  deadline,
+  isReadOnly
 }: any) {
   const {
     attributes,
@@ -206,49 +207,53 @@ function SortableAction({
     >
       <div className="flex justify-between items-start mb-2 gap-2">
         <div className="flex items-center gap-2 flex-1">
-          <button
-            {...attributes}
-            {...listeners}
-            className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-blue-600 hover:bg-white/80 p-1 rounded transition-all shrink-0 -ml-1"
-          >
-            <GripVertical className="w-4 h-4" />
-          </button>
+          {!isReadOnly && (
+            <button
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-blue-600 hover:bg-white/80 p-1 rounded transition-all shrink-0 -ml-1"
+            >
+              <GripVertical className="w-4 h-4" />
+            </button>
+          )}
           <span className={`font-bold text-xs ${action.isComplete ? 'text-slate-500 line-through decoration-slate-400' : 'text-blue-900'}`}>{action.action}</span>
         </div>
-        {action.isComplete ? (
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={() => toggleHideAction(action.id)}
-              className="text-slate-400 hover:text-slate-600 p-1 hover:bg-white rounded-full transition-all"
-              title="Masquer cette action"
-            >
-              <EyeOff className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => handleReactivateAction(traitementId, action.id)}
-              className="text-slate-400 hover:text-blue-600 p-1 hover:bg-white rounded-full transition-all"
-              title="Réactiver l'action"
-            >
-              <RefreshCcw className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={() => setActiveClotureInput(activeClotureInput === `${traitementId}-${action.id}` ? null : `${traitementId}-${action.id}`)}
-              className="text-emerald-500 hover:text-emerald-700 p-1 hover:bg-emerald-50 rounded-full transition-colors"
-              title="Clôturer l'action"
-            >
-              <CheckCircle className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => handleDeleteAction(traitementId, action.id)}
-              className="text-orange-400 hover:text-orange-600 p-1 hover:bg-orange-50 rounded-full transition-colors"
-              title="Supprimer l'action"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
+        {!isReadOnly && (
+          action.isComplete ? (
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => toggleHideAction(action.id)}
+                className="text-slate-400 hover:text-slate-600 p-1 hover:bg-white rounded-full transition-all"
+                title="Masquer cette action"
+              >
+                <EyeOff className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => handleReactivateAction(traitementId, action.id)}
+                className="text-slate-400 hover:text-blue-600 p-1 hover:bg-white rounded-full transition-all"
+                title="Réactiver l'action"
+              >
+                <RefreshCcw className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => setActiveClotureInput(activeClotureInput === `${traitementId}-${action.id}` ? null : `${traitementId}-${action.id}`)}
+                className="text-emerald-500 hover:text-emerald-700 p-1 hover:bg-emerald-50 rounded-full transition-colors"
+                title="Clôturer l'action"
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => handleDeleteAction(traitementId, action.id)}
+                className="text-orange-400 hover:text-orange-600 p-1 hover:bg-orange-50 rounded-full transition-colors"
+                title="Supprimer l'action"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )
         )}
       </div>
 
@@ -352,6 +357,10 @@ export default function Home() {
     if (over && active.id !== over.id) {
       const traitement = naviresEnTraitement.find(t => t.id === traitementId);
       if (!traitement) return;
+
+      if (traitement.userId && traitement.userId !== (session?.user as any)?.id) {
+        return; // Read-only view
+      }
 
       const oldIndex = traitement.actions.findIndex(a => a.id === active.id);
       const newIndex = traitement.actions.findIndex(a => a.id === over.id);
@@ -820,13 +829,15 @@ export default function Home() {
                 />
 
                 {/* Bouton de suppression global du suivi */}
-                <button
-                  onClick={() => handleDeleteSuivi(traitement.id)}
-                  className="absolute top-3 right-3 w-9 h-9 bg-white border border-red-100 text-red-500 rounded-full flex items-center justify-center hover:bg-red-50 hover:border-red-500 hover:scale-110 transition-all z-20 shadow-sm"
-                  title="Supprimer ce navire du suivi"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                {(!traitement.userId || traitement.userId === (session?.user as any)?.id) && (
+                  <button
+                    onClick={() => handleDeleteSuivi(traitement.id)}
+                    className="absolute top-3 right-3 w-9 h-9 bg-white border border-red-100 text-red-500 rounded-full flex items-center justify-center hover:bg-red-50 hover:border-red-500 hover:scale-110 transition-all z-20 shadow-sm"
+                    title="Supprimer ce navire du suivi"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
 
                 <div className="flex justify-between items-stretch">
                   <div className="flex-1">
@@ -976,7 +987,7 @@ export default function Home() {
                       );
                     })()}
 
-                    {!traitement.isTermine && (
+                    {!traitement.isTermine && (!traitement.userId || traitement.userId === (session?.user as any)?.id) && (
                       <button
                         onClick={() => openActionModal(traitement)}
                         className="px-6 py-2 bg-blue-600 text-white rounded-full text-xs hover:bg-blue-700 transition-all font-bold shadow-md shadow-blue-500/20 hover:shadow-blue-500/30 flex items-center gap-2"

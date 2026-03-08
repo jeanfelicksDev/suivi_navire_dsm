@@ -17,9 +17,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         const existingTraitement = await prisma.traitement.findUnique({ where: { id } });
         if (!existingTraitement) return NextResponse.json({ error: "Introuvable" }, { status: 404 });
 
-        const isAdmin = (session.user as any).role === "ADMIN";
-        if (!isAdmin && existingTraitement.userId !== (session.user as any).id) {
-            return NextResponse.json({ error: "Interdit" }, { status: 403 });
+        if ((existingTraitement as any).userId !== (session.user as any).id) {
+            return NextResponse.json({ error: "Interdit. Seul le créateur peut modifier ce suivi." }, { status: 403 });
         }
 
         const updatedSuivi = await prisma.traitement.update({
@@ -51,9 +50,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
         const existingTraitement = await prisma.traitement.findUnique({ where: { id } });
         if (!existingTraitement) return NextResponse.json({ error: "Introuvable" }, { status: 404 });
 
-        const isAdmin = (session.user as any).role === "ADMIN";
-        if (!isAdmin && existingTraitement.userId !== (session.user as any).id) {
-            return NextResponse.json({ error: "Interdit" }, { status: 403 });
+        if ((existingTraitement as any).userId !== (session.user as any).id) {
+            return NextResponse.json({ error: "Interdit. Seul le créateur peut supprimer ce suivi." }, { status: 403 });
         }
 
         await prisma.traitement.delete({
