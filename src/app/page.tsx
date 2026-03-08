@@ -392,6 +392,7 @@ export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'en_cours' | 'termines'>('en_cours');
   const [globalSearchQuery, setGlobalSearchQuery] = useState("");
+  const [adminUserFilter, setAdminUserFilter] = useState("all");
 
   // Action Modal State
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
@@ -712,13 +713,23 @@ export default function Home() {
 
   const displayedNavires = naviresEnTraitement.filter(n => {
     const matchesTab = activeTab === 'en_cours' ? !n.isTermine : n.isTermine;
-    if (!globalSearchQuery) return matchesTab;
+
+    // Admin user filter logic
+    const isAdmin = (session?.user as any)?.role === 'ADMIN';
+    const matchesAdminUserFilter = !isAdmin || adminUserFilter === 'all' || n.user?.email === adminUserFilter;
+
+    if (!matchesTab || !matchesAdminUserFilter) return false;
+
+    if (!globalSearchQuery) return true;
     const searchLower = globalSearchQuery.toLowerCase();
     const navireName = n.navire?.nomNavire?.toLowerCase() || '';
     const armateur = n.navire?.armateurCoque?.toLowerCase() || '';
     const voyage = n.voyage?.numVoyage?.toLowerCase() || '';
-    return matchesTab && (navireName.includes(searchLower) || armateur.includes(searchLower) || voyage.includes(searchLower));
+    return navireName.includes(searchLower) || armateur.includes(searchLower) || voyage.includes(searchLower);
   });
+
+  // Extract unique users for admin filter drop-down
+  const uniqueUsers = Array.from(new Set(naviresEnTraitement.filter(n => n.user).map(n => n.user?.email))).filter(Boolean);
 
   return (
     <main className="min-h-screen text-slate-800 relative font-sans" style={{ background: 'linear-gradient(145deg, #f1f5f9 0%, #e8eef7 50%, #f1f5f9 100%)' }}>
@@ -777,16 +788,36 @@ export default function Home() {
               </button>
             </div>
 
-            {/* Search Input */}
-            <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Rechercher un navire..."
-                value={globalSearchQuery}
-                onChange={(e) => setGlobalSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-2xl border-0 ring-1 ring-slate-200/60 bg-white/60 hover:bg-white focus:bg-white focus:ring-2 focus:ring-blue-500 shadow-sm transition-all text-sm font-medium placeholder:text-slate-400 focus:outline-none"
-              />
+            {/* Search Input and Admin Filter */}
+            <div className="flex gap-4 w-full sm:w-auto flex-col sm:flex-row">
+              {(session?.user as any)?.role === 'ADMIN' && uniqueUsers.length > 0 && (
+                <div className="relative w-full sm:w-64">
+                  <select
+                    value={adminUserFilter}
+                    onChange={(e) => setAdminUserFilter(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-2xl border-0 ring-1 ring-slate-200/60 bg-white/60 hover:bg-white focus:bg-white focus:ring-2 focus:ring-purple-500 shadow-sm transition-all text-sm font-medium text-slate-700 focus:outline-none appearance-none"
+                  >
+                    <option value="all">Tous les collaborateurs</option>
+                    {uniqueUsers.map(email => (
+                      <option key={email} value={email}>{email}</option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                    <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" fillRule="evenodd"></path></svg>
+                  </div>
+                </div>
+              )}
+
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Rechercher un navire..."
+                  value={globalSearchQuery}
+                  onChange={(e) => setGlobalSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl border-0 ring-1 ring-slate-200/60 bg-white/60 hover:bg-white focus:bg-white focus:ring-2 focus:ring-blue-500 shadow-sm transition-all text-sm font-medium placeholder:text-slate-400 focus:outline-none"
+                />
+              </div>
             </div>
           </div>
         </div>
