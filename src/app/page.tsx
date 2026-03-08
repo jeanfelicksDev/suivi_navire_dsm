@@ -310,6 +310,7 @@ function SortableAction({
 
 export default function Home() {
   const { data: session, status } = useSession();
+  const isAdmin = (session?.user as any)?.role === 'ADMIN';
   const router = useRouter();
   const [naviresEnTraitement, setNaviresEnTraitement] = useState<NavireEnTraitement[]>([]);
   const [hiddenActionIds, setHiddenActionIds] = useState<Set<string>>(new Set());
@@ -616,9 +617,13 @@ export default function Home() {
         if (res.ok) {
           fetchSuivis();
           window.dispatchEvent(new Event('globalDataUpdate'));
+        } else {
+          const data = await res.json();
+          alert(`Erreur: ${data.error || 'Impossible de supprimer ce suivi'}`);
         }
       } catch (error) {
         console.error('Failed to delete suivi:', error);
+        alert("Une erreur réseau est survenue.");
       }
     }
   };
@@ -862,7 +867,7 @@ export default function Home() {
                 />
 
                 {/* Bouton de suppression global du suivi */}
-                {(!traitement.userId || traitement.userId === (session?.user as any)?.id) && (
+                {(isAdmin || !traitement.userId || traitement.userId === (session?.user as any)?.id) && (
                   <button
                     onClick={() => handleDeleteSuivi(traitement.id)}
                     className="absolute top-3 right-3 w-9 h-9 bg-white border border-red-100 text-red-500 rounded-full flex items-center justify-center hover:bg-red-50 hover:border-red-500 hover:scale-110 transition-all z-20 shadow-sm"
