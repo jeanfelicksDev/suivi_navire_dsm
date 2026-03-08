@@ -9,6 +9,7 @@ interface Action {
     action: string;
     isComplete: boolean;
     dateCloture?: string;
+    armateur?: string | null;
 }
 
 interface Traitement {
@@ -49,7 +50,7 @@ export default function MesureMensuellePage() {
     const [voyages, setVoyages] = useState<Voyage[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [selectedArmateur, setSelectedArmateur] = useState<string>("Tous");
+    const [selectedArmateur, setSelectedArmateur] = useState<string>("OOCL");
 
     const fetchMesures = useCallback(async () => {
         setLoading(true);
@@ -73,16 +74,17 @@ export default function MesureMensuellePage() {
     // Build unique armateur list from loaded voyages
     const armateurs = useMemo(() => {
         const set = new Set<string>();
+        // OOCL comme sélection par défaut
+        set.add("OOCL");
         voyages.forEach(v => {
             if (v.navire?.armateurCoque) set.add(v.navire.armateurCoque);
             v.slotteurs?.forEach(s => set.add(s.nom));
         });
-        return ["Tous", ...Array.from(set).sort()];
+        return Array.from(set).sort();
     }, [voyages]);
 
     // Filter voyages by selected armateur
     const filteredVoyages = useMemo(() => {
-        if (selectedArmateur === "Tous") return voyages;
         return voyages.filter(v =>
             v.navire?.armateurCoque === selectedArmateur ||
             v.slotteurs?.some(s => s.nom === selectedArmateur)
@@ -94,6 +96,7 @@ export default function MesureMensuellePage() {
         const matches = allActions.filter(a =>
             a.isComplete &&
             a.dateCloture &&
+            (!a.armateur || a.armateur === selectedArmateur) &&
             keywords.some(k => a.action.toLowerCase().includes(k.toLowerCase()))
         );
         if (matches.length === 0) return "-";
@@ -192,16 +195,13 @@ export default function MesureMensuellePage() {
             )}
 
             {/* Active filter badge */}
-            {selectedArmateur !== "Tous" && (
-                <div className="mb-4 flex items-center gap-2">
-                    <span className="text-xs text-slate-500 font-medium">Filtré par armateur :</span>
-                    <span className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">
-                        {selectedArmateur}
-                        <button onClick={() => setSelectedArmateur("Tous")} className="ml-1 hover:text-blue-900">✕</button>
-                    </span>
-                    <span className="text-xs text-slate-400">({filteredVoyages.length} voyage{filteredVoyages.length > 1 ? 's' : ''})</span>
-                </div>
-            )}
+            <div className="mb-4 flex items-center gap-2">
+                <span className="text-xs text-slate-500 font-medium">Synthèse pour l'armateur :</span>
+                <span className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">
+                    {selectedArmateur}
+                </span>
+                <span className="text-xs text-slate-400">({filteredVoyages.length} voyage{filteredVoyages.length > 1 ? 's' : ''})</span>
+            </div>
 
             <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden overflow-x-auto">
                 <table className="w-full text-sm text-left border-collapse">
@@ -243,9 +243,7 @@ export default function MesureMensuellePage() {
                                 <td colSpan={12} className="px-6 py-12 text-center">
                                     <Ship className="w-12 h-12 text-slate-200 mx-auto mb-3" />
                                     <p className="text-slate-400 font-medium">
-                                        {selectedArmateur !== "Tous"
-                                            ? `Aucun mouvement pour l'armateur "${selectedArmateur}" en ${MONTHS_FR[month - 1]} ${year}`
-                                            : `Aucun mouvement trouvé pour ${MONTHS_FR[month - 1]} ${year}`}
+                                        Aucun mouvement pour l'armateur "{selectedArmateur}" en {MONTHS_FR[month - 1]} {year}
                                     </p>
                                 </td>
                             </tr>
