@@ -35,13 +35,16 @@ export function Sidebar() {
     const [isSlotteurModalOpen, setIsSlotteurModalOpen] = useState(false);
 
     // State for managing global actions list
-    const [actions, setActions] = useState<{ id: string, name: string, isReferentiel: boolean, nbreJours?: number | null, periode?: string | null, evenementId?: string | null, joursOuvrable: boolean, joursCalendaire: boolean, isNotification: boolean }[]>([]);
+    const [actions, setActions] = useState<{ id: string, name: string, isReferentiel: boolean, nbreJours?: number | null, periode?: string | null, evenementId?: string | null, joursOuvrable: boolean, joursCalendaire: boolean, isNotification: boolean, type: string }[]>([]);
     const [newAction, setNewAction] = useState("");
     const [newActionIsReferentiel, setNewActionIsReferentiel] = useState(false);
+    const [newActionType, setNewActionType] = useState("Commune");
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editValue, setEditValue] = useState("");
     const [editIsReferentiel, setEditIsReferentiel] = useState(false);
+    const [editType, setEditType] = useState("Commune");
     const [actionSearchQuery, setActionSearchQuery] = useState("");
+
 
     // Deadline sub-form state
     const [deadlineOpenForId, setDeadlineOpenForId] = useState<string | null>(null);
@@ -239,11 +242,12 @@ export function Sidebar() {
                 const res = await fetch('/api/action-templates', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: newAction.trim(), isReferentiel: newActionIsReferentiel })
+                    body: JSON.stringify({ name: newAction.trim(), isReferentiel: newActionIsReferentiel, type: newActionType })
                 });
                 if (res.ok) {
                     setNewAction("");
                     setNewActionIsReferentiel(false);
+                    setNewActionType("Commune");
                     fetchActions();
                     notifyDataUpdate();
                 } else {
@@ -255,6 +259,7 @@ export function Sidebar() {
             }
         }
     };
+
 
     const openDeadlineForm = (action: typeof actions[0]) => {
         setDeadlineOpenForId(action.id);
@@ -319,10 +324,11 @@ export function Sidebar() {
         }
     };
 
-    const handleStartEdit = (id: string, currentName: string, isReferentiel: boolean) => {
+    const handleStartEdit = (id: string, currentName: string, isReferentiel: boolean, type: string) => {
         setEditingId(id);
         setEditValue(currentName);
         setEditIsReferentiel(isReferentiel || false);
+        setEditType(type || "Commune");
     };
 
     const handleSaveEdit = async (id: string) => {
@@ -331,7 +337,7 @@ export function Sidebar() {
                 const res = await fetch(`/api/action-templates/${id}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: editValue.trim(), isReferentiel: editIsReferentiel })
+                    body: JSON.stringify({ name: editValue.trim(), isReferentiel: editIsReferentiel, type: editType })
                 });
                 if (res.ok) {
                     setEditingId(null);
@@ -343,6 +349,7 @@ export function Sidebar() {
             }
         }
     };
+
 
     const [editingNavireId, setEditingNavireId] = useState<string | null>(null);
     const [editNavireNom, setEditNavireNom] = useState("");
@@ -796,17 +803,30 @@ export function Sidebar() {
                                                 Enregistrer
                                             </button>
                                         </div>
-                                        <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={newActionIsReferentiel}
-                                                onChange={e => setNewActionIsReferentiel(e.target.checked)}
-                                                className="w-4 h-4 accent-emerald-600"
-                                            />
-                                            <span className="font-medium text-slate-700">Référentiel</span>
-                                            <span className="text-xs text-slate-400">(peut être utilisé comme événement deadline)</span>
-                                        </label>
+                                        <div className="flex items-center gap-6">
+                                            <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={newActionIsReferentiel}
+                                                    onChange={e => setNewActionIsReferentiel(e.target.checked)}
+                                                    className="w-4 h-4 accent-emerald-600"
+                                                />
+                                                <span className="font-medium text-slate-700">Référentiel</span>
+                                            </label>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-medium text-slate-700 text-sm">Type :</span>
+                                                <select
+                                                    value={newActionType}
+                                                    onChange={e => setNewActionType(e.target.value)}
+                                                    className="p-1 border border-slate-300 rounded text-sm bg-white"
+                                                >
+                                                    <option value="Commune">Commune</option>
+                                                    <option value="Individuelle">Individuelle</option>
+                                                </select>
+                                            </div>
+                                        </div>
                                     </form>
+
                                 </div>
 
                                 {/* Champ de recherche pour les actions */}
@@ -828,8 +848,10 @@ export function Sidebar() {
                                             <tr className="bg-slate-100 border-b border-slate-300 text-[13px]">
                                                 <th className="p-3 font-bold text-slate-700 border-r border-slate-300 w-14 text-center">ID</th>
                                                 <th className="p-3 font-bold text-slate-700">Nom de l'action</th>
+                                                <th className="p-3 font-bold text-slate-700 text-center w-28 border-l border-slate-300">Type</th>
                                                 <th className="p-3 font-bold text-slate-700 text-center w-28">Opérations</th>
                                             </tr>
+
                                         </thead>
                                         <tbody>
                                             {actions.filter(a => a.name.toLowerCase().includes(actionSearchQuery.toLowerCase())).length === 0 ? (
@@ -852,9 +874,16 @@ export function Sidebar() {
                                                                         type="text"
                                                                         value={editValue}
                                                                         onChange={e => setEditValue(toTitleCase(e.target.value))}
-                                                                        onKeyDown={e => e.key === 'Enter' && handleSaveEdit(action.id)}
                                                                         className="flex-1 p-2 border border-emerald-500 rounded focus:outline-none"
                                                                     />
+                                                                    <select
+                                                                        value={editType}
+                                                                        onChange={e => setEditType(e.target.value)}
+                                                                        className="p-1 border border-slate-300 rounded text-xs bg-white"
+                                                                    >
+                                                                        <option value="Commune">Commune</option>
+                                                                        <option value="Individuelle">Individuelle</option>
+                                                                    </select>
                                                                     <label className="flex items-center gap-1.5 text-xs whitespace-nowrap bg-emerald-50 px-2 py-1.5 rounded border border-emerald-200 cursor-pointer">
                                                                         <input
                                                                             type="checkbox"
@@ -871,6 +900,7 @@ export function Sidebar() {
                                                                         <X className="w-4 h-4" />
                                                                     </button>
                                                                 </div>
+
                                                             ) : (
                                                                 <div className="space-y-1">
                                                                     <div className="flex items-center gap-2">
@@ -960,11 +990,16 @@ export function Sidebar() {
                                                                 </div>
                                                             )}
                                                         </td>
-                                                        <td className="p-4">
+                                                        <td className="p-3 border-l border-r border-slate-200 text-center">
+                                                            <span className={`text-[10px] font-bold px-2 py-1 rounded shadow-sm ${action.type === 'Individuelle' ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                                                                {action.type || 'Commune'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-3 flex justify-between gap-1 items-center">
                                                             {editingId !== action.id && (
                                                                 <div className="flex items-center justify-center gap-3">
                                                                     <button
-                                                                        onClick={() => handleStartEdit(action.id, action.name, action.isReferentiel)}
+                                                                        onClick={() => handleStartEdit(action.id, action.name, action.isReferentiel, action.type)}
                                                                         className="text-blue-500 hover:text-blue-700 p-1 hover:bg-blue-50 rounded transition-colors"
                                                                         title="Modifier"
                                                                     >

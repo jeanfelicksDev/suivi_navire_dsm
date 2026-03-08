@@ -22,7 +22,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     try {
         const { id } = await params
         const body = await request.json()
-        const { name, isReferentiel, nbreJours, periode, evenementId, joursOuvrable, joursCalendaire, isNotification } = body
+        const { name, isReferentiel, nbreJours, periode, evenementId, joursOuvrable, joursCalendaire, isNotification, type } = body
 
         const updated = await prisma.actionTemplate.update({
             where: { id },
@@ -35,8 +35,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
                 ...(joursOuvrable !== undefined && { joursOuvrable }),
                 ...(joursCalendaire !== undefined && { joursCalendaire }),
                 ...(isNotification !== undefined && { isNotification }),
+                ...(type !== undefined && { type }),
             }
         })
+
         return NextResponse.json(updated)
     } catch (error) {
         console.error('Error updating action template:', error)

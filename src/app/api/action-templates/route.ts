@@ -28,7 +28,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
         }
         const body = await request.json()
-        const { name, isReferentiel, nbreJours, periode, evenementId, joursOuvrable, joursCalendaire, isNotification } = body
+        const { name, isReferentiel, nbreJours, periode, evenementId, joursOuvrable, joursCalendaire, isNotification, type } = body
         const template = await prisma.actionTemplate.create({
             data: {
                 name: toTitleCase(name),
@@ -39,8 +39,10 @@ export async function POST(request: Request) {
                 joursOuvrable: joursOuvrable ?? false,
                 joursCalendaire: joursCalendaire ?? false,
                 isNotification: isNotification ?? false,
+                type: type ?? "Commune",
             }
         })
+
         return NextResponse.json(template)
     } catch (error: any) {
         console.error('Error creating action template:', error)

@@ -18,7 +18,9 @@ export interface Action {
     action: string;
     isComplete: boolean;
     dateCloture?: string;
+    armateur?: string | null;
 }
+
 
 export interface NavireEnTraitement {
     id: string;

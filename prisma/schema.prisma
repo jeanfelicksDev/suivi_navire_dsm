@@ -84,6 +84,7 @@ model Action {
   isComplete   Boolean    @default(false)
   dateCloture  String?
   position     Int        @default(0)
+  armateur     String?
   traitement   Traitement @relation(fields: [traitementId], references: [id], onDelete: Cascade)
 }
 
@@ -97,7 +98,9 @@ model ActionTemplate {
   joursOuvrable   Boolean @default(false)
   joursCalendaire Boolean @default(false)
   isNotification  Boolean @default(false)
+  type            String  @default("Commune")
 }
+
 
 model Armateur {
   id  String @id @default(cuid())

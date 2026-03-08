@@ -413,6 +413,10 @@ export default function Home() {
   const [numVoyage, setNumVoyage] = useState("");
   const [dateETA, setDateETA] = useState("");
   const [dateETD, setDateETD] = useState("");
+  const [modalStep, setModalStep] = useState(1);
+  const [availableArmateursForVoyage, setAvailableArmateursForVoyage] = useState<string[]>([]);
+  const [selectedArmateursForDossier, setSelectedArmateursForDossier] = useState<string[]>([]);
+
 
   const fetchSuivis = async () => {
     setIsLoading(true);
@@ -503,17 +507,33 @@ export default function Home() {
   const handleSelectVoyage = (id: string) => {
     setSelectedVoyageId(id);
     const navire = availableNavires.find(n => n.id === selectedNavireId);
-    const voyage = navire?.voyages?.find((v: any) => v.id === id);
+    if (!navire) return;
+
+    const voyage = navire.voyages?.find((v: any) => v.id === id);
     if (voyage) {
+
       setNumVoyage(voyage.numVoyage);
       setDateETA(voyage.dateETA);
       setDateETD(voyage.dateETD);
+
+      // Collect available armateurs (Coque + Slotteurs)
+      const armateursList = [navire.armateurCoque];
+      if (voyage.slotteurs) {
+        voyage.slotteurs.forEach((s: any) => {
+          if (!armateursList.includes(s.nom)) armateursList.push(s.nom);
+        });
+      }
+      setAvailableArmateursForVoyage(armateursList);
+      setSelectedArmateursForDossier(armateursList); // By default, select all
     } else {
       setNumVoyage("");
       setDateETA("");
       setDateETD("");
+      setAvailableArmateursForVoyage([]);
+      setSelectedArmateursForDossier([]);
     }
   };
+
 
   const handleDeleteAction = async (traitementId: string, actionId: string) => {
     if (window.confirm("Voulez-vous vraiment supprimer cette action ?")) {
@@ -725,6 +745,17 @@ export default function Home() {
       return;
     }
 
+    // First click: switch to armateur selection if not already there
+    if (modalStep === 1) {
+      setModalStep(2);
+      return;
+    }
+
+    if (selectedArmateursForDossier.length === 0) {
+      alert("Veuillez sélectionner au moins un armateur pour le suivi.");
+      return;
+    }
+
     // Vérifier si le combo navire + voyage existe déjà
     const alreadyExists = naviresEnTraitement.some(
       t => t.navire.nomNavire === nomNavire && t.voyage.numVoyage === numVoyage
@@ -745,7 +776,8 @@ export default function Home() {
           armateurCoque: armateur,
           numVoyage,
           dateETA,
-          dateETD
+          dateETD,
+          selectedArmateurs: selectedArmateursForDossier
         })
       });
 
@@ -753,6 +785,7 @@ export default function Home() {
         await fetchSuivis();
         window.dispatchEvent(new Event('globalDataUpdate'));
         setIsModalOpen(false);
+        setModalStep(1);
 
         // Reset Form
         setSelectedNavireId("");
@@ -762,6 +795,7 @@ export default function Home() {
         setNumVoyage("");
         setDateETA("");
         setDateETD("");
+        setSelectedArmateursForDossier([]);
       } else {
         const errorData = await res.json();
         alert(`Erreur lors de l'enregistrement : ${errorData.error || 'Erreur inconnue'}`);
@@ -773,6 +807,7 @@ export default function Home() {
       setIsSubmitting(false);
     }
   };
+
 
   const displayedNavires = naviresEnTraitement.filter(n => {
     const matchesTab = activeTab === 'en_cours' ? !n.isTermine : n.isTermine;
@@ -1039,7 +1074,7 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className="ml-2 pt-0">
+                    <div className="ml-2 pt-0 w-full overflow-x-auto">
                       <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
@@ -1052,31 +1087,76 @@ export default function Home() {
                           {(() => {
                             const visibleActions = traitement.actions.filter(a => !hiddenActionIds.has(a.id));
                             const nbHidden = traitement.actions.filter(a => hiddenActionIds.has(a.id)).length;
+
+                            // Grouping actions
+                            const communeActions = visibleActions.filter(a => !a.armateur);
+                            const individualActionsByArmateur: Record<string, any[]> = {};
+                            visibleActions.forEach(a => {
+                              if (a.armateur) {
+                                if (!individualActionsByArmateur[a.armateur]) individualActionsByArmateur[a.armateur] = [];
+                                individualActionsByArmateur[a.armateur].push(a);
+                              }
+                            });
+
                             return (
-                              <>
-                                <div className="flex flex-wrap gap-4">
-                                  {visibleActions.length === 0 && nbHidden === 0 ? (
-                                    <span className="text-slate-400 italic text-sm">Aucune action...</span>
-                                  ) : (
-                                    visibleActions.map(action => (
-                                      <SortableAction
-                                        key={action.id}
-                                        action={action}
-                                        traitementId={traitement.id}
-                                        activeClotureInput={activeClotureInput}
-                                        setActiveClotureInput={setActiveClotureInput}
-                                        actionClotureDates={actionClotureDates}
-                                        setActionClotureDates={setActionClotureDates}
-                                        handleCloseAction={handleCloseAction}
-                                        handleReactivateAction={handleReactivateAction}
-                                        handleDeleteAction={handleDeleteAction}
-                                        toggleHideAction={toggleHideAction}
-                                        deadline={calculateDeadline(action.action, traitement, actionTemplates)}
-                                        isReadOnly={traitement.userId && traitement.userId !== (session?.user as any)?.id}
-                                      />
-                                    ))
-                                  )}
+                              <div className="flex flex-col gap-6 w-full">
+                                {/* Actions Communes */}
+                                {communeActions.length > 0 && (
+                                  <div className="space-y-3">
+                                    <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Actions Communes</h5>
+                                    <div className="flex flex-wrap gap-4">
+                                      {communeActions.map(action => (
+                                        <SortableAction
+                                          key={action.id}
+                                          action={action}
+                                          traitementId={traitement.id}
+                                          activeClotureInput={activeClotureInput}
+                                          setActiveClotureInput={setActiveClotureInput}
+                                          actionClotureDates={actionClotureDates}
+                                          setActionClotureDates={setActionClotureDates}
+                                          handleCloseAction={handleCloseAction}
+                                          handleReactivateAction={handleReactivateAction}
+                                          handleDeleteAction={handleDeleteAction}
+                                          toggleHideAction={toggleHideAction}
+                                          deadline={calculateDeadline(action.action, traitement, actionTemplates)}
+                                          isReadOnly={traitement.userId && traitement.userId !== (session?.user as any)?.id}
+                                        />
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Actions Individuelles par Armateur */}
+                                <div className="flex flex-col gap-6">
+                                  {Object.entries(individualActionsByArmateur).map(([armateurName, armateurActions]) => (
+                                    <div key={armateurName} className="space-y-3 border-l-2 border-indigo-100 pl-4 py-1">
+                                      <h5 className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                        {armateurName}
+                                      </h5>
+                                      <div className="flex flex-wrap gap-4">
+                                        {armateurActions.map(action => (
+                                          <SortableAction
+                                            key={action.id}
+                                            action={action}
+                                            traitementId={traitement.id}
+                                            activeClotureInput={activeClotureInput}
+                                            setActiveClotureInput={setActiveClotureInput}
+                                            actionClotureDates={actionClotureDates}
+                                            setActionClotureDates={setActionClotureDates}
+                                            handleCloseAction={handleCloseAction}
+                                            handleReactivateAction={handleReactivateAction}
+                                            handleDeleteAction={handleDeleteAction}
+                                            toggleHideAction={toggleHideAction}
+                                            deadline={calculateDeadline(action.action, traitement, actionTemplates)}
+                                            isReadOnly={traitement.userId && traitement.userId !== (session?.user as any)?.id}
+                                          />
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
+
                                 {nbHidden > 0 && (
                                   <button
                                     onClick={() => {
@@ -1096,12 +1176,13 @@ export default function Home() {
                                     {nbHidden} action{nbHidden > 1 ? 's' : ''} masquée{nbHidden > 1 ? 's' : ''}
                                   </button>
                                 )}
-                              </>
+                              </div>
                             );
                           })()}
                         </SortableContext>
                       </DndContext>
                     </div>
+
                   </div>
 
                   <div className="flex flex-col items-end justify-between ml-8 min-w-[200px] pr-10">
@@ -1162,98 +1243,135 @@ export default function Home() {
               </div>
 
               <form onSubmit={handleSubmit} className="p-5 space-y-5">
-                {/* Infos Navire */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-black">
-                  <div className="space-y-1">
-                    <label className="text-sm font-bold">Sélectionner un Navire *</label>
-                    <select
-                      value={selectedNavireId}
-                      onChange={e => handleSelectNavire(e.target.value)}
-                      className="w-full p-2 border border-blue-400 rounded bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none transition-colors"
-                      required
-                    >
-                      <option value="">-- Choisir un navire --</option>
-                      {availableNavires.map(n => (
-                        <option key={n.id} value={n.id}>{n.nomNavire}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold">Sélectionner le N° Voyage *</label>
-                    <select
-                      value={selectedVoyageId}
-                      onChange={e => handleSelectVoyage(e.target.value)}
-                      className="w-full p-2 border border-blue-400 rounded bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none transition-colors disabled:bg-slate-100 disabled:border-slate-300 disabled:cursor-not-allowed"
-                      required
-                      disabled={!selectedNavireId}
-                    >
-                      <option value="">-- Choisir un voyage --</option>
-                      {availableNavires.find(n => n.id === selectedNavireId)?.voyages?.map((v: any) => (
-                        <option key={v.id} value={v.id}>{v.numVoyage}</option>
-                      ))}
-                    </select>
-                  </div>
+                {modalStep === 1 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-black">
+                    <div className="space-y-1">
+                      <label className="text-sm font-bold">Sélectionner un Navire *</label>
+                      <select
+                        value={selectedNavireId}
+                        onChange={e => handleSelectNavire(e.target.value)}
+                        className="w-full p-2 border border-blue-400 rounded bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none transition-colors"
+                        required
+                      >
+                        <option value="">-- Choisir un navire --</option>
+                        {availableNavires.map(n => (
+                          <option key={n.id} value={n.id}>{n.nomNavire}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold">Sélectionner le N° Voyage *</label>
+                      <select
+                        value={selectedVoyageId}
+                        onChange={e => handleSelectVoyage(e.target.value)}
+                        className="w-full p-2 border border-blue-400 rounded bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none transition-colors disabled:bg-slate-100 disabled:border-slate-300 disabled:cursor-not-allowed"
+                        required
+                        disabled={!selectedNavireId}
+                      >
+                        <option value="">-- Choisir un voyage --</option>
+                        {availableNavires.find(n => n.id === selectedNavireId)?.voyages?.map((v: any) => (
+                          <option key={v.id} value={v.id}>{v.numVoyage}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                  <div className="space-y-1 sm:col-span-2 mt-2 pt-3 border-t border-slate-100">
-                    <h4 className="text-[11px] uppercase font-bold text-slate-400 tracking-wider mb-1">Informations automatiques</h4>
-                  </div>
+                    <div className="space-y-1 sm:col-span-2 mt-2 pt-3 border-t border-slate-100">
+                      <h4 className="text-[11px] uppercase font-bold text-slate-400 tracking-wider mb-1">Informations automatiques</h4>
+                    </div>
 
-                  <div className="space-y-1">
-                    <label className="text-sm text-slate-500 font-bold">Armateur Coque</label>
-                    <input
-                      type="text"
-                      value={armateur}
-                      readOnly
-                      className="w-full p-2 border border-transparent rounded bg-slate-100 text-slate-600 cursor-not-allowed focus:outline-none font-bold"
-                      placeholder="Auto-rempli..."
-                    />
+                    <div className="space-y-1">
+                      <label className="text-sm text-slate-500 font-bold">Armateur Coque</label>
+                      <input
+                        type="text"
+                        value={armateur}
+                        readOnly
+                        className="w-full p-2 border border-transparent rounded bg-slate-100 text-slate-600 cursor-not-allowed focus:outline-none font-bold"
+                        placeholder="Auto-rempli..."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm text-slate-500 font-bold">Date ETA</label>
+                      <input
+                        type="date"
+                        value={dateETA}
+                        readOnly
+                        className="w-full p-2 border border-transparent rounded bg-slate-100 text-slate-600 cursor-not-allowed focus:outline-none font-bold"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm text-slate-500 font-bold">Date ETD</label>
+                      <input
+                        type="date"
+                        value={dateETD}
+                        readOnly
+                        className="w-full p-2 border border-transparent rounded bg-slate-100 text-slate-600 cursor-not-allowed focus:outline-none font-bold"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm text-slate-500 font-bold">Date ETA</label>
-                    <input
-                      type="date"
-                      value={dateETA}
-                      readOnly
-                      className="w-full p-2 border border-transparent rounded bg-slate-100 text-slate-600 cursor-not-allowed focus:outline-none font-bold"
-                    />
+                ) : (
+                  <div className="space-y-4 text-black animate-fade-in">
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+                      <h3 className="text-lg font-bold text-emerald-800 mb-1">Sélection du Suivi</h3>
+                      <p className="text-sm text-emerald-600">Choisissez les armateurs pour lesquels vous souhaitez assurer le suivi des actions individuelles.</p>
+                    </div>
+
+                    <div className="space-y-3 px-1">
+                      {availableArmateursForVoyage.map(arm => (
+                        <label key={arm} className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 transition-all cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={selectedArmateursForDossier.includes(arm)}
+                            onChange={e => {
+                              if (e.target.checked) {
+                                setSelectedArmateursForDossier([...selectedArmateursForDossier, arm]);
+                              } else {
+                                setSelectedArmateursForDossier(selectedArmateursForDossier.filter(a => a !== arm));
+                              }
+                            }}
+                            className="w-5 h-5 accent-emerald-600"
+                          />
+                          <div className="flex-1">
+                            <span className="font-bold text-slate-700 group-hover:text-emerald-900">{arm}</span>
+                            <span className="ml-2 text-[10px] text-slate-400 italic">
+                              {arm === armateur ? "(Coque)" : "(Slotteur)"}
+                            </span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm text-slate-500 font-bold">Date ETD</label>
-                    <input
-                      type="date"
-                      value={dateETD}
-                      readOnly
-                      className="w-full p-2 border border-transparent rounded bg-slate-100 text-slate-600 cursor-not-allowed focus:outline-none font-bold"
-                    />
-                  </div>
-                </div>
+                )}
 
 
 
                 <div className="flex justify-end gap-3 pt-5 border-t border-slate-200">
                   <button
                     type="button"
-                    onClick={() => setIsModalOpen(false)}
+                    onClick={() => {
+                      if (modalStep === 2) setModalStep(1);
+                      else setIsModalOpen(false);
+                    }}
                     className="px-6 py-2 border border-slate-300 text-black hover:bg-slate-50 transition-colors"
                   >
-                    Annuler
+                    {modalStep === 2 ? "Retour" : "Annuler"}
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-6 py-2 border border-green-600 text-green-800 bg-green-50 hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-6 py-2 border border-emerald-600 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-bold"
                   >
                     {isSubmitting ? (
                       <>
-                        <div className="w-4 h-4 border-2 border-green-800 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="w-4 h-4 border-2 border-emerald-800 border-t-transparent rounded-full animate-spin"></div>
                         Enregistrement...
                       </>
                     ) : (
-                      "Enregistrer Navire"
+                      modalStep === 1 ? "Suivant" : "Enregistrer Navire"
                     )}
                   </button>
                 </div>
               </form>
+
             </div>
           </div>
         )
