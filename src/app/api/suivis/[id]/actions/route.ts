@@ -15,9 +15,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         const { action: actionName } = body
 
         const existingTraitement = await prisma.traitement.findUnique({
-            where: { id },
-            include: { selectedArmateurs: true } as any // Handle potential types sync delay
+            where: { id }
         });
+
 
         if (!existingTraitement) return NextResponse.json({ error: "Introuvable" }, { status: 404 });
 
@@ -26,10 +26,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         }
 
         const selectedArmateurs = (existingTraitement as any).selectedArmateurs || [];
+        const normalizedActionName = actionName.trim();
 
-        // Find the template to check if it's a "Commune" or "Individuelle" action
+        // Find the template using normalized name
         const template = await prisma.actionTemplate.findFirst({
-            where: { name: actionName.trim() }
+            where: {
+                name: {
+                    equals: normalizedActionName,
+                    mode: 'insensitive' // Be case-insensitive during search
+                }
+            }
         });
 
         const isIndividuelle = template?.type === "Individuelle";
@@ -38,29 +44,54 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         if (isIndividuelle && selectedArmateurs.length > 0) {
             const results = [];
             for (const armateurName of selectedArmateurs) {
-                const newAction = await prisma.action.create({
-                    data: {
+                // Check if this action already exists for THIS armateur (to avoid duplicates from multiple clicks)
+                const existingActionForArmateur = await prisma.action.findFirst({
+                    where: {
                         traitementId: id,
-                        action: actionName.trim(),
-                        armateur: armateurName, // Specific armateur zone
-                        isComplete: false,
+                        action: normalizedActionName,
+                        armateur: armateurName
                     }
                 });
-                results.push(newAction);
+
+                if (!existingActionForArmateur) {
+                    const newAction = await prisma.action.create({
+                        data: {
+                            traitementId: id,
+                            action: normalizedActionName,
+                            armateur: armateurName,
+                            isComplete: false,
+                        }
+                    });
+                    results.push(newAction);
+                }
             }
-            return NextResponse.json(results[0]);
+            return NextResponse.json(results[0] || { status: "already_exists" });
         } else {
-            // It's a "Commune" action (or no armateurs selected), add it once to the general zone
+            // It's a "Commune" action (or no armateurs selected)
+            // Check if it already exists as commune
+            const existingCommuneAction = await prisma.action.findFirst({
+                where: {
+                    traitementId: id,
+                    action: normalizedActionName,
+                    armateur: null
+                }
+            });
+
+            if (existingCommuneAction) {
+                return NextResponse.json(existingCommuneAction);
+            }
+
             const newAction = await prisma.action.create({
                 data: {
                     traitementId: id,
-                    action: actionName.trim(),
-                    armateur: null, // General "Actions Communes" zone
+                    action: normalizedActionName,
+                    armateur: null,
                     isComplete: false,
                 }
             });
             return NextResponse.json(newAction);
         }
+
 
 
 
