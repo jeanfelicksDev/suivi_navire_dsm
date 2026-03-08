@@ -1,6 +1,8 @@
 // API for Armateurs
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function GET() {
     try {
@@ -16,6 +18,10 @@ export async function GET() {
 
 export async function POST(req: Request) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user || (!(session.user as any).canCreateArmateur && (session.user as any).role !== 'ADMIN')) {
+            return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+        }
         const { nom } = await req.json();
         if (!nom) return NextResponse.json({ error: 'Le nom est requis' }, { status: 400 });
 

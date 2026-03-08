@@ -41,16 +41,31 @@ export const authOptions: NextAuthOptions = {
                     email: user.email,
                     role: user.profil,
                     service: user.service,
+                    canCreateNavire: user.canCreateNavire,
+                    canCreateVoyage: user.canCreateVoyage,
+                    canCreateArmateur: user.canCreateArmateur,
+                    canCreateAction: user.canCreateAction,
                 };
             }
         })
     ],
     callbacks: {
-        async jwt({ token, user }) {
+        async jwt({ token, user, trigger, session }) {
             if (user) {
                 token.id = user.id;
                 token.role = (user as any).role;
                 token.service = (user as any).service;
+                token.canCreateNavire = (user as any).canCreateNavire;
+                token.canCreateVoyage = (user as any).canCreateVoyage;
+                token.canCreateArmateur = (user as any).canCreateArmateur;
+                token.canCreateAction = (user as any).canCreateAction;
+            }
+            // Update permissions if a session update is triggered
+            if (trigger === "update" && session) {
+                token.canCreateNavire = session.canCreateNavire ?? token.canCreateNavire;
+                token.canCreateVoyage = session.canCreateVoyage ?? token.canCreateVoyage;
+                token.canCreateArmateur = session.canCreateArmateur ?? token.canCreateArmateur;
+                token.canCreateAction = session.canCreateAction ?? token.canCreateAction;
             }
             return token;
         },
@@ -59,6 +74,10 @@ export const authOptions: NextAuthOptions = {
                 (session.user as any).id = token.id;
                 (session.user as any).role = token.role;
                 (session.user as any).service = token.service;
+                (session.user as any).canCreateNavire = token.canCreateNavire;
+                (session.user as any).canCreateVoyage = token.canCreateVoyage;
+                (session.user as any).canCreateArmateur = token.canCreateArmateur;
+                (session.user as any).canCreateAction = token.canCreateAction;
             }
             return session;
         }

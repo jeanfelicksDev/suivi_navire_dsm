@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic'
 
@@ -21,6 +23,10 @@ const toTitleCase = (str: string) => {
 
 export async function POST(request: Request) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user || (!(session.user as any).canCreateAction && (session.user as any).role !== 'ADMIN')) {
+            return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+        }
         const body = await request.json()
         const { name, isReferentiel, nbreJours, periode, evenementId, joursOuvrable, joursCalendaire, isNotification } = body
         const template = await prisma.actionTemplate.create({
