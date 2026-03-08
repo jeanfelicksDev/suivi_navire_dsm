@@ -372,6 +372,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'en_cours' | 'termines'>('en_cours');
+  const [globalSearchQuery, setGlobalSearchQuery] = useState("");
 
   // Action Modal State
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
@@ -690,7 +691,15 @@ export default function Home() {
     }
   };
 
-  const displayedNavires = naviresEnTraitement.filter(n => activeTab === 'en_cours' ? !n.isTermine : n.isTermine);
+  const displayedNavires = naviresEnTraitement.filter(n => {
+    const matchesTab = activeTab === 'en_cours' ? !n.isTermine : n.isTermine;
+    if (!globalSearchQuery) return matchesTab;
+    const searchLower = globalSearchQuery.toLowerCase();
+    const navireName = n.navire?.nomNavire?.toLowerCase() || '';
+    const armateur = n.navire?.armateurCoque?.toLowerCase() || '';
+    const voyage = n.voyage?.numVoyage?.toLowerCase() || '';
+    return matchesTab && (navireName.includes(searchLower) || armateur.includes(searchLower) || voyage.includes(searchLower));
+  });
 
   return (
     <main className="min-h-screen text-slate-800 relative font-sans" style={{ background: 'linear-gradient(145deg, #f1f5f9 0%, #e8eef7 50%, #f1f5f9 100%)' }}>
@@ -701,48 +710,66 @@ export default function Home() {
         <div className="absolute -bottom-20 right-1/3 w-[500px] h-[500px] rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #c7d2fe 0%, transparent 70%)' }} />
       </div>
 
-      <div className="max-w-7xl mx-auto px-8 pt-10 pb-8">
-        {/* Header */}
-        <header className="flex justify-between items-start mb-10">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-2 h-8 rounded-full" style={{ background: 'linear-gradient(to bottom, #2563eb, #0ea5e9)' }} />
-              <h1 className="text-4xl font-extrabold tracking-tight" style={{ background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 60%, #0ea5e9 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-                Suivi des Navires
-              </h1>
+      <div className="max-w-7xl mx-auto px-8 pt-4 pb-8">
+        {/* Sticky Header Zone */}
+        <div className="sticky top-0 z-40 bg-white/70 backdrop-blur-xl border-b border-slate-200/50 -mx-8 px-8 py-6 mb-8 shadow-[0_4px_30px_rgba(0,0,0,0.03)] transition-all">
+          {/* Header */}
+          <header className="flex justify-between items-start mb-6">
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-2 h-8 rounded-full" style={{ background: 'linear-gradient(to bottom, #2563eb, #0ea5e9)' }} />
+                <h1 className="text-4xl font-extrabold tracking-tight" style={{ background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 60%, #0ea5e9 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                  Suivi des Navires
+                </h1>
+              </div>
+              <p className="text-slate-500 text-sm font-medium ml-5">Direction des Services Maritimes — DSM</p>
             </div>
-            <p className="text-slate-500 text-sm font-medium ml-5">Direction des Services Maritimes — DSM</p>
-          </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2.5 text-white font-semibold text-sm rounded-2xl px-6 py-3 shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0"
-            style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', boxShadow: '0 4px 15px rgba(37, 99, 235, 0.35)' }}
-          >
-            <Plus className="w-4.5 h-4.5" />
-            Nouveau Navire
-          </button>
-        </header>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2.5 text-white font-semibold text-sm rounded-2xl px-6 py-3 shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0"
+              style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', boxShadow: '0 4px 15px rgba(37, 99, 235, 0.35)' }}
+            >
+              <Plus className="w-4.5 h-4.5" />
+              Nouveau Navire
+            </button>
+          </header>
 
-        {/* Tabs */}
-        <div className="flex gap-1 mb-8 p-1 rounded-2xl w-fit" style={{ background: 'rgba(226, 232, 240, 0.6)', backdropFilter: 'blur(8px)' }}>
-          <button
-            onClick={() => setActiveTab('en_cours')}
-            className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === 'en_cours'
-              ? 'bg-white text-blue-700 shadow-sm shadow-blue-100'
-              : 'text-slate-500 hover:text-slate-700'
-              }`}
-          >
-            En cours
-          </button>
-          <button
-            onClick={() => setActiveTab('termines')}
-            className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === 'termines'
-              ? 'bg-white text-emerald-700 shadow-sm shadow-emerald-100'
-              : 'text-slate-500 hover:text-slate-700'
-              }`}
-          >
-            Terminés
-          </button>
+          {/* Controls Bar (Tabs & Search) */}
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            {/* Tabs */}
+            <div className="flex gap-1 p-1 rounded-2xl w-fit" style={{ background: 'rgba(226, 232, 240, 0.7)', backdropFilter: 'blur(10px)' }}>
+              <button
+                onClick={() => setActiveTab('en_cours')}
+                className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === 'en_cours'
+                  ? 'bg-white text-blue-700 shadow-sm shadow-blue-100/50'
+                  : 'text-slate-500 hover:text-slate-700'
+                  }`}
+              >
+                En cours
+              </button>
+              <button
+                onClick={() => setActiveTab('termines')}
+                className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === 'termines'
+                  ? 'bg-white text-emerald-700 shadow-sm shadow-emerald-100/50'
+                  : 'text-slate-500 hover:text-slate-700'
+                  }`}
+              >
+                Terminés
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Rechercher un navire..."
+                value={globalSearchQuery}
+                onChange={(e) => setGlobalSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-2xl border-0 ring-1 ring-slate-200/60 bg-white/60 hover:bg-white focus:bg-white focus:ring-2 focus:ring-blue-500 shadow-sm transition-all text-sm font-medium placeholder:text-slate-400 focus:outline-none"
+              />
+            </div>
+          </div>
         </div>
 
         {/* List of Navires */}
