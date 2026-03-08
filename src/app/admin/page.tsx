@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Users, CheckCircle, XCircle, ArrowLeft } from "lucide-react";
+import { Users, CheckCircle, XCircle, ArrowLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminUsersPage() {
@@ -64,6 +64,25 @@ export default function AdminUsersPage() {
         } catch (err) {
             console.error(err);
             fetchUsers(); // Revert on error
+        }
+    };
+
+    const deleteUser = async (userId: string) => {
+        if (!confirm("Voulez-vous vraiment supprimer cet utilisateur ? Cette action est irréversible et supprimera également tous ses dossiers de suivi.")) return;
+
+        try {
+            const res = await fetch(`/api/admin/users/${userId}`, {
+                method: "DELETE",
+            });
+            if (res.ok) {
+                setUsers(users.filter(u => u.id !== userId));
+            } else {
+                const data = await res.json();
+                alert(data.error || "Erreur lors de la suppression");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Erreur réseau");
         }
     };
 
@@ -156,12 +175,21 @@ export default function AdminUsersPage() {
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                     {user.profil !== 'ADMIN' && (
-                                        <button
-                                            onClick={() => toggleApproval(user.id, !user.isApproved)}
-                                            className={`text-xs font-bold px-3 py-1.5 rounded transition bg-white border shadow-sm ${user.isApproved ? 'border-orange-200 text-orange-600 hover:bg-orange-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
-                                        >
-                                            {user.isApproved ? 'Révoquer' : 'Approuver'}
-                                        </button>
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button
+                                                onClick={() => toggleApproval(user.id, !user.isApproved)}
+                                                className={`text-xs font-bold px-3 py-1.5 rounded transition bg-white border shadow-sm ${user.isApproved ? 'border-orange-200 text-orange-600 hover:bg-orange-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
+                                            >
+                                                {user.isApproved ? 'Révoquer' : 'Approuver'}
+                                            </button>
+                                            <button
+                                                onClick={() => deleteUser(user.id)}
+                                                className="p-1.5 text-red-500 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors border border-transparent hover:border-red-200"
+                                                title="Supprimer le compte"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     )}
                                 </td>
                             </tr>
