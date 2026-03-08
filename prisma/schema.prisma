@@ -58,6 +58,7 @@ model User {
   canCreateArmateur Boolean  @default(false)
   canCreateAction   Boolean  @default(false)
   canViewAllSuivis  Boolean  @default(false)
+  needsPasswordChange Boolean @default(false)
 
   traitements   Traitement[]
   resetTokens   ResetToken[]

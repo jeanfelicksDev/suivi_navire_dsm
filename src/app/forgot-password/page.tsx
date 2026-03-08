@@ -48,7 +48,7 @@ export default function ForgotPasswordPage() {
                         Mot de passe oublié
                     </h2>
                     <p className="mt-2 text-sm text-slate-500">
-                        Saisissez votre email pour recevoir un lien de réinitialisation.
+                        Saisissez votre email. Votre demande sera transmise à l'administrateur qui vous fournira un mot de passe temporaire.
                     </p>
                 </div>
 
@@ -91,7 +91,7 @@ export default function ForgotPasswordPage() {
                             disabled={loading || success !== null}
                             className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                            {loading ? "Envoi en cours..." : "Recevoir le lien"}
+                            {loading ? "Envoi en cours..." : "Réinitialiser mon mot de passe"}
                         </button>
                     </div>
                 </form>

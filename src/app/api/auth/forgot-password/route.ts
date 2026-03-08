@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { v4 as uuidv4 } from "uuid";
+import { hash } from "bcryptjs";
 import prisma from "@/lib/db";
-import { sendResetPasswordEmail } from "@/lib/mailer";
+import { sendTempPasswordToAdmin } from "@/lib/mailer";
 
 export async function POST(req: Request) {
     try {
@@ -17,33 +17,44 @@ export async function POST(req: Request) {
 
         if (!user) {
             // Return success even if user not found for security reasons
-            return NextResponse.json({ message: "Si cet email est associé à un compte, un lien a été envoyé." });
+            return NextResponse.json({ message: "La demande a été transmise à l'administrateur." });
         }
 
-        // Un token valide 1 heure
-        const token = uuidv4();
-        const expiresAt = new Date(Date.now() + 3600000);
+        // 1. Générer un mot de passe temporaire (8 caractères aléatoires)
+        const tempPassword = Math.random().toString(36).slice(-8);
+        const hashedTempPassword = await hash(tempPassword, 12);
 
-        // Supprimer d'abord les anciens tokens pour ce user
-        await prisma.resetToken.deleteMany({
-            where: { userId: user.id },
-        });
-
-        await prisma.resetToken.create({
+        // 2. Mettre à jour l'utilisateur
+        await prisma.user.update({
+            where: { id: user.id },
             data: {
-                token,
-                userId: user.id,
-                expiresAt,
+                password: hashedTempPassword,
+                needsPasswordChange: true,
             },
         });
 
-        try {
-            await sendResetPasswordEmail(user.email, token);
-        } catch (mailError) {
-            console.error("Erreur lors de l'envoi de l'email :", mailError);
+        // 3. Récupérer tous les administrateurs pour les notifier
+        const admins = await prisma.user.findMany({
+            where: { profil: "ADMIN" },
+            select: { email: true },
+        });
+
+        const adminEmails = admins.map(a => a.email);
+
+        // Si aucun admin trouvé, on envoie au moins à EMAIL_FROM si configuré
+        if (adminEmails.length === 0 && process.env.EMAIL_FROM) {
+            adminEmails.push(process.env.EMAIL_FROM);
         }
 
-        return NextResponse.json({ message: "Si cet email est associé à un compte, un lien a été envoyé." });
+        if (adminEmails.length > 0) {
+            try {
+                await sendTempPasswordToAdmin(adminEmails, user.email, tempPassword);
+            } catch (mailError) {
+                console.error("Erreur lors de l'envoi de l'email aux admins :", mailError);
+            }
+        }
+
+        return NextResponse.json({ message: "La demande a été transmise à l'administrateur qui vous enverra un mot de passe temporaire." });
     } catch (error: any) {
         console.error("Forgot Password Error:", error);
         return NextResponse.json({ error: "Une erreur est survenue." }, { status: 500 });

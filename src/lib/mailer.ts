@@ -29,3 +29,30 @@ export const sendResetPasswordEmail = async (to: string, token: string) => {
     `,
     });
 };
+
+export const sendTempPasswordToAdmin = async (adminEmails: string[], userEmail: string, tempPassword: string) => {
+    const transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_SERVER_HOST,
+        port: Number(process.env.EMAIL_SERVER_PORT) || 587,
+        secure: process.env.EMAIL_SERVER_SECURE === "true",
+        auth: {
+            user: process.env.EMAIL_SERVER_USER,
+            pass: process.env.EMAIL_SERVER_PASSWORD,
+        },
+    });
+
+    await transporter.sendMail({
+        from: `"Suivi Navires DSM" <${process.env.EMAIL_FROM}>`,
+        to: adminEmails.join(", "),
+        subject: "Réinitialisation de mot de passe (Temporaire)",
+        html: `
+      <h2>Mot de passe temporaire généré</h2>
+      <p>L'utilisateur <strong>${userEmail}</strong> a demandé une réinitialisation de son mot de passe.</p>
+      <p>Un mot de passe temporaire a été généré : <strong>${tempPassword}</strong></p>
+      <p>Veuillez transmettre ce mot de passe manuellement à l'utilisateur.</p>
+      <p>L'utilisateur sera invité à changer ce mot de passe dès sa première utilisation.</p>
+      <br />
+      <p>L'équipe DSM</p>
+    `,
+    });
+};

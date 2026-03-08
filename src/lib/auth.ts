@@ -36,6 +36,10 @@ export const authOptions: NextAuthOptions = {
                     throw new Error("Votre compte n'a pas encore été approuvé par un administrateur.");
                 }
 
+                if (user.needsPasswordChange) {
+                    throw new Error("PASSWORD_CHANGE_REQUIRED");
+                }
+
                 return {
                     id: user.id,
                     email: user.email,
