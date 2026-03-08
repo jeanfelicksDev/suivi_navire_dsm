@@ -8,9 +8,16 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
     try {
         const navires = await prisma.navire.findMany({
-            include: { voyages: true },
+            include: {
+                voyages: {
+                    include: {
+                        slotteurs: true
+                    }
+                }
+            },
             orderBy: { nomNavire: 'asc' }
         })
+
         return NextResponse.json(navires)
     } catch (error) {
         console.error('Error fetching navires:', error)
