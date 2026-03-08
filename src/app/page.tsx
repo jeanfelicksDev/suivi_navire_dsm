@@ -394,6 +394,8 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'en_cours' | 'termines'>('en_cours');
   const [globalSearchQuery, setGlobalSearchQuery] = useState("");
   const [adminUserFilter, setAdminUserFilter] = useState("all");
+  const [armateurFilter, setArmateurFilter] = useState("all");
+  const [armateurs, setArmateurs] = useState<{ id: string, nom: string }[]>([]);
 
   // Action Modal State
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
@@ -451,15 +453,29 @@ export default function Home() {
     }
   };
 
+  const fetchArmateurs = async () => {
+    try {
+      const res = await fetch('/api/armateurs');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setArmateurs(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch armateurs:', error);
+    }
+  };
+
   useEffect(() => {
     fetchSuivis();
     fetchTemplates();
     fetchNavires();
+    fetchArmateurs();
 
     const handleUpdate = () => {
       fetchNavires();
       fetchTemplates();
       fetchSuivis();
+      fetchArmateurs();
     };
 
     window.addEventListener('globalDataUpdate', handleUpdate);
@@ -723,7 +739,12 @@ export default function Home() {
     const canSeeOthers = (session?.user as any)?.role === 'ADMIN' || (session?.user as any)?.canViewAllSuivis === true;
     const matchesAdminUserFilter = !canSeeOthers || adminUserFilter === 'all' || n.user?.email === adminUserFilter;
 
-    if (!matchesTab || !matchesAdminUserFilter) return false;
+    // Armateur filter logic (Coque OR Slotteur)
+    const matchesArmateurFilter = armateurFilter === 'all' ||
+      n.navire.armateurCoque === armateurFilter ||
+      n.voyage.slotteurs?.some(s => s.nom === armateurFilter);
+
+    if (!matchesTab || !matchesAdminUserFilter || !matchesArmateurFilter) return false;
 
     if (!globalSearchQuery) return true;
     const searchLower = globalSearchQuery.toLowerCase();
@@ -795,24 +816,44 @@ export default function Home() {
 
             {/* Search Input and Admin Filter */}
             <div className="flex gap-4 w-full sm:w-auto flex-col sm:flex-row">
-              {((session?.user as any)?.role === 'ADMIN' || (session?.user as any)?.canViewAllSuivis === true) && uniqueUsers.length > 0 && (
-                <div className="relative w-full sm:w-64">
-                  <select
-                    value={adminUserFilter}
-                    onChange={(e) => setAdminUserFilter(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-2xl border-0 ring-1 ring-slate-200/60 bg-white/60 hover:bg-white focus:bg-white focus:ring-2 focus:ring-purple-500 shadow-sm transition-all text-sm font-medium text-slate-700 focus:outline-none appearance-none"
-                  >
-                    <option value="all">Tous les collaborateurs</option>
-                    {uniqueUsers.map(email => (
-                      <option key={email} value={email}>
-                        {email === session?.user?.email ? `Mon compte (${email})` : email}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
-                    <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" fillRule="evenodd"></path></svg>
+              {((session?.user as any)?.role === 'ADMIN' || (session?.user as any)?.canViewAllSuivis === true) && (
+                <>
+                  {uniqueUsers.length > 0 && (
+                    <div className="relative w-full sm:w-64">
+                      <select
+                        value={adminUserFilter}
+                        onChange={(e) => setAdminUserFilter(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-2xl border-0 ring-1 ring-slate-200/60 bg-white/60 hover:bg-white focus:bg-white focus:ring-2 focus:ring-purple-500 shadow-sm transition-all text-sm font-medium text-slate-700 focus:outline-none appearance-none"
+                      >
+                        <option value="all">Tous les collaborateurs</option>
+                        {uniqueUsers.map(email => (
+                          <option key={email} value={email}>
+                            {email === session?.user?.email ? `Mon compte (${email})` : email}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                        <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" fillRule="evenodd"></path></svg>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="relative w-full sm:w-64">
+                    <select
+                      value={armateurFilter}
+                      onChange={(e) => setArmateurFilter(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-2xl border-0 ring-1 ring-slate-200/60 bg-white/60 hover:bg-white focus:bg-white focus:ring-2 focus:ring-blue-500 shadow-sm transition-all text-sm font-medium text-slate-700 focus:outline-none appearance-none"
+                    >
+                      <option value="all">Tous les armateurs (Coque/Slot)</option>
+                      {armateurs.map(arm => (
+                        <option key={arm.id} value={arm.nom}>{arm.nom}</option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" fillRule="evenodd"></path></svg>
+                    </div>
                   </div>
-                </div>
+                </>
               )}
 
               <div className="relative w-full sm:w-80">

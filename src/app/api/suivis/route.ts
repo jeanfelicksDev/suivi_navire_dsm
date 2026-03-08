@@ -21,7 +21,11 @@ export async function GET() {
             where: (isAdmin || canViewAllSuivis) ? {} : { userId },
             include: {
                 navire: true,
-                voyage: true,
+                voyage: {
+                    include: {
+                        slotteurs: true
+                    }
+                },
                 user: { select: { email: true, service: true, profil: true } },
                 actions: {
                     orderBy: {

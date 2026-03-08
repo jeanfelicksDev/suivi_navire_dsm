@@ -10,6 +10,7 @@ export interface Voyage {
     numVoyage: string;
     dateETA: string;
     dateETD: string;
+    slotteurs?: { id: string, nom: string }[];
 }
 
 export interface Action {
