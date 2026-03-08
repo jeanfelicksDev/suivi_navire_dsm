@@ -136,6 +136,10 @@ export default function AdminUsersPage() {
                                                 <input type="checkbox" checked={user.canCreateAction} onChange={(e) => togglePermission(user.id, 'canCreateAction', e.target.checked)} className="w-3.5 h-3.5 accent-purple-600 rounded border-slate-300 pointer-events-auto" />
                                                 Création d'Action
                                             </label>
+                                            <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-purple-600 transition-colors">
+                                                <input type="checkbox" checked={user.canViewAllSuivis} onChange={(e) => togglePermission(user.id, 'canViewAllSuivis', e.target.checked)} className="w-3.5 h-3.5 accent-purple-600 rounded border-slate-300 pointer-events-auto" />
+                                                Vue d'ensemble
+                                            </label>
                                         </div>
                                     )}
                                 </td>

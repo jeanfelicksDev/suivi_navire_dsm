@@ -57,6 +57,7 @@ model User {
   canCreateVoyage   Boolean  @default(false)
   canCreateArmateur Boolean  @default(false)
   canCreateAction   Boolean  @default(false)
+  canViewAllSuivis  Boolean  @default(false)
 
   traitements   Traitement[]
   resetTokens   ResetToken[]

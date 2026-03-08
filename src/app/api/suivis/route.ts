@@ -14,10 +14,11 @@ export async function GET() {
         }
 
         const isAdmin = (session.user as any).role === "ADMIN";
+        const canViewAllSuivis = (session.user as any).canViewAllSuivis === true;
         const userId = (session.user as any).id;
 
         const suivis = await prisma.traitement.findMany({
-            where: isAdmin ? {} : { userId },
+            where: (isAdmin || canViewAllSuivis) ? {} : { userId },
             include: {
                 navire: true,
                 voyage: true,

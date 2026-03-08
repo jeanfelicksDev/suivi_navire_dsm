@@ -714,9 +714,9 @@ export default function Home() {
   const displayedNavires = naviresEnTraitement.filter(n => {
     const matchesTab = activeTab === 'en_cours' ? !n.isTermine : n.isTermine;
 
-    // Admin user filter logic
-    const isAdmin = (session?.user as any)?.role === 'ADMIN';
-    const matchesAdminUserFilter = !isAdmin || adminUserFilter === 'all' || n.user?.email === adminUserFilter;
+    // Admin/Overview user filter logic
+    const canSeeOthers = (session?.user as any)?.role === 'ADMIN' || (session?.user as any)?.canViewAllSuivis === true;
+    const matchesAdminUserFilter = !canSeeOthers || adminUserFilter === 'all' || n.user?.email === adminUserFilter;
 
     if (!matchesTab || !matchesAdminUserFilter) return false;
 
@@ -790,7 +790,7 @@ export default function Home() {
 
             {/* Search Input and Admin Filter */}
             <div className="flex gap-4 w-full sm:w-auto flex-col sm:flex-row">
-              {(session?.user as any)?.role === 'ADMIN' && uniqueUsers.length > 0 && (
+              {((session?.user as any)?.role === 'ADMIN' || (session?.user as any)?.canViewAllSuivis === true) && uniqueUsers.length > 0 && (
                 <div className="relative w-full sm:w-64">
                   <select
                     value={adminUserFilter}
@@ -874,7 +874,7 @@ export default function Home() {
                   <div className="flex-1">
                     {/* Card Header row */}
                     <div className="flex flex-wrap gap-12 mb-5 text-slate-900">
-                      {(session?.user as any)?.role === 'ADMIN' && traitement.user && (
+                      {((session?.user as any)?.role === 'ADMIN' || (session?.user as any)?.canViewAllSuivis === true) && traitement.user && (
                         <div className="flex flex-col justify-center border-l-4 border-purple-500 pl-3 bg-purple-50/50 py-1 rounded-r">
                           <span className="text-sm font-bold text-purple-700">{traitement.user.email}</span>
                           <span className="text-[10px] uppercase tracking-wider text-purple-400 font-bold mt-0.5 whitespace-nowrap">Créateur ({traitement.user.service})</span>

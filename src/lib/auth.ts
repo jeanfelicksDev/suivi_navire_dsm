@@ -45,6 +45,7 @@ export const authOptions: NextAuthOptions = {
                     canCreateVoyage: user.canCreateVoyage,
                     canCreateArmateur: user.canCreateArmateur,
                     canCreateAction: user.canCreateAction,
+                    canViewAllSuivis: user.canViewAllSuivis,
                 };
             }
         })
@@ -59,6 +60,7 @@ export const authOptions: NextAuthOptions = {
                 token.canCreateVoyage = (user as any).canCreateVoyage;
                 token.canCreateArmateur = (user as any).canCreateArmateur;
                 token.canCreateAction = (user as any).canCreateAction;
+                token.canViewAllSuivis = (user as any).canViewAllSuivis;
             }
             // Update permissions if a session update is triggered
             if (trigger === "update" && session) {
@@ -66,6 +68,7 @@ export const authOptions: NextAuthOptions = {
                 token.canCreateVoyage = session.canCreateVoyage ?? token.canCreateVoyage;
                 token.canCreateArmateur = session.canCreateArmateur ?? token.canCreateArmateur;
                 token.canCreateAction = session.canCreateAction ?? token.canCreateAction;
+                token.canViewAllSuivis = session.canViewAllSuivis ?? token.canViewAllSuivis;
             }
             return token;
         },
@@ -78,6 +81,7 @@ export const authOptions: NextAuthOptions = {
                 (session.user as any).canCreateVoyage = token.canCreateVoyage;
                 (session.user as any).canCreateArmateur = token.canCreateArmateur;
                 (session.user as any).canCreateAction = token.canCreateAction;
+                (session.user as any).canViewAllSuivis = token.canViewAllSuivis;
             }
             return session;
         }

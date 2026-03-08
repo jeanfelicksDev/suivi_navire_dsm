@@ -17,7 +17,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             canCreateNavire,
             canCreateVoyage,
             canCreateArmateur,
-            canCreateAction
+            canCreateAction,
+            canViewAllSuivis
         } = body;
 
         const user = await prisma.user.update({
@@ -27,6 +28,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 ...(canCreateVoyage !== undefined && { canCreateVoyage }),
                 ...(canCreateArmateur !== undefined && { canCreateArmateur }),
                 ...(canCreateAction !== undefined && { canCreateAction }),
+                ...(canViewAllSuivis !== undefined && { canViewAllSuivis }),
             },
         });
 
