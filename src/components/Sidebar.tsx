@@ -93,9 +93,6 @@ export function Sidebar() {
             const data = await res.json();
             if (Array.isArray(data)) {
                 setNavires(data);
-                // Dynamically update armateurs list from navires for suggestions
-                const navireArmateurs = data.map((n: any) => n.armateurCoque);
-                setArmateurs(prev => Array.from(new Set([...prev, ...navireArmateurs])));
             }
         } catch (error) {
             console.error('Error fetching navires:', error);
@@ -360,17 +357,11 @@ export function Sidebar() {
 
     const handleSelectArmateur = (val: string | null) => {
         const value = (val || "").trim();
-        if (value && !armateurs.includes(value)) {
-            setArmateurs([...armateurs, value]);
-        }
         setNewNavireArmateur(value);
     };
 
     const handleSelectEditArmateur = (val: string | null) => {
         const value = (val || "").trim();
-        if (value && !armateurs.includes(value)) {
-            setArmateurs([...armateurs, value]);
-        }
         setEditNavireArmateur(value);
     };
 
