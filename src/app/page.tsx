@@ -799,7 +799,9 @@ export default function Home() {
                   >
                     <option value="all">Tous les collaborateurs</option>
                     {uniqueUsers.map(email => (
-                      <option key={email} value={email}>{email}</option>
+                      <option key={email} value={email}>
+                        {email === session?.user?.email ? `Mon compte (${email})` : email}
+                      </option>
                     ))}
                   </select>
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
