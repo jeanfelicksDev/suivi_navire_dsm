@@ -1,118 +1,110 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model Navire {
-  id             String       @id @default(cuid())
-  nomNavire      String
-  armateurCoque  String
-  voyages        Voyage[]
-  traitements    Traitement[]
+  id            String       @id @default(cuid())
+  nomNavire     String
+  armateurCoque String
+  traitements   Traitement[]
+  voyages       Voyage[]
 }
 
 model Voyage {
-  id           String       @id @default(cuid())
-  navireId     String
-  navire       Navire       @relation(fields: [navireId], references: [id], onDelete: Cascade)
-  numVoyage    String
-  dateETA      String
-  dateETD      String
-  traitements  Traitement[]
-  slotteurs    Slotteur[]
+  id          String       @id @default(cuid())
+  navireId    String
+  numVoyage   String
+  dateETA     String
+  dateETD     String
+  slotteurs   Slotteur[]
+  traitements Traitement[]
+  navire      Navire       @relation(fields: [navireId], references: [id], onDelete: Cascade)
 
   @@unique([navireId, dateETA])
 }
 
 model Slotteur {
-  id        String  @id @default(cuid())
-  nom       String
-  voyageId  String
-  voyage    Voyage  @relation(fields: [voyageId], references: [id], onDelete: Cascade)
-}
-
-enum Role {
-  ADMIN
-  USER
+  id       String @id @default(cuid())
+  nom      String
+  voyageId String
+  voyage   Voyage @relation(fields: [voyageId], references: [id], onDelete: Cascade)
 }
 
 model User {
-  id            String       @id @default(cuid())
-  email         String       @unique
-  password      String
-  profil        Role         @default(USER)
-  service       String       // This will store the name of the Armateur or "Toutes" for Admin
-  isApproved    Boolean      @default(false) // For admin approval
-  
-  // Permissions
-  canCreateNavire   Boolean  @default(false)
-  canCreateVoyage   Boolean  @default(false)
-  canCreateArmateur Boolean  @default(false)
-  canCreateAction   Boolean  @default(false)
-  canViewAllSuivis  Boolean  @default(false)
-  needsPasswordChange Boolean @default(false)
-
-  traitements   Traitement[]
-  resetTokens   ResetToken[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id                  String       @id @default(cuid())
+  email               String       @unique
+  password            String
+  profil              Role         @default(USER)
+  service             String
+  isApproved          Boolean      @default(false)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  canCreateAction     Boolean      @default(false)
+  canCreateArmateur   Boolean      @default(false)
+  canCreateNavire     Boolean      @default(false)
+  canCreateVoyage     Boolean      @default(false)
+  canViewAllSuivis    Boolean      @default(false)
+  needsPasswordChange Boolean      @default(false)
+  resetTokens         ResetToken[]
+  traitements         Traitement[]
 }
 
 model ResetToken {
   id        String   @id @default(cuid())
   token     String   @unique
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Traitement {
-  id           String    @id @default(cuid())
-  navireId     String
-  navire       Navire    @relation(fields: [navireId], references: [id], onDelete: Cascade)
-  voyageId     String
-  voyage       Voyage    @relation(fields: [voyageId], references: [id], onDelete: Cascade)
-  userId       String?   // User who tracks this, nullable for old rows migration
-  user         User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  actions      Action[]
-  isTermine    Boolean   @default(false)
-  createdAt    DateTime  @default(now())
+  id        String   @id @default(cuid())
+  navireId  String
+  voyageId  String
+  isTermine Boolean  @default(false)
+  createdAt DateTime @default(now())
+  userId    String?
+  actions   Action[]
+  navire    Navire   @relation(fields: [navireId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  voyage    Voyage   @relation(fields: [voyageId], references: [id], onDelete: Cascade)
 }
 
 model Action {
-  id             String     @id @default(cuid())
-  traitementId   String
-  traitement     Traitement @relation(fields: [traitementId], references: [id], onDelete: Cascade)
-  action         String
-  isComplete     Boolean    @default(false)
-  dateCloture    String?
-  position       Int        @default(0)
+  id           String     @id @default(cuid())
+  traitementId String
+  action       String
+  isComplete   Boolean    @default(false)
+  dateCloture  String?
+  position     Int        @default(0)
+  traitement   Traitement @relation(fields: [traitementId], references: [id], onDelete: Cascade)
 }
 
 model ActionTemplate {
-  id              String   @id @default(cuid())
-  name            String   @unique
-  isReferentiel   Boolean  @default(false)
-  
-  // Deadline settings
+  id              String  @id @default(cuid())
+  name            String  @unique
+  isReferentiel   Boolean @default(false)
   nbreJours       Int?
   periode         String?
   evenementId     String?
-  joursOuvrable   Boolean  @default(false)
-  joursCalendaire Boolean  @default(false)
-  isNotification  Boolean  @default(false)
+  joursOuvrable   Boolean @default(false)
+  joursCalendaire Boolean @default(false)
+  isNotification  Boolean @default(false)
 }
 
 model Armateur {
-  id    String @id @default(cuid())
-  nom   String @unique
+  id  String @id @default(cuid())
+  nom String @unique
+}
+
+enum Role {
+  ADMIN
+  USER
 }

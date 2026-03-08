@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { updateExcelForVoyage } from "@/lib/excel-service";
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -18,7 +19,7 @@ export async function GET() {
         const userId = (session.user as any).id;
 
         const suivis = await prisma.traitement.findMany({
-            where: (isAdmin || canViewAllSuivis) ? {} : { userId },
+            where: (isAdmin || canViewAllSuivis) ? {} : { userId: userId as string },
             include: {
                 navire: true,
                 voyage: {
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
             where: {
                 voyageId: voyage.id,
                 isTermine: false,
-                userId: userId // Prevent creating duplicate traitment for the same user
+                userId: userId as string
             }
         })
 
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
             data: {
                 navireId: navire.id,
                 voyageId: voyage.id,
-                userId,
+                userId: userId as string,
                 actions: {
                     create: []
                 }
@@ -127,6 +128,9 @@ export async function POST(request: Request) {
                 actions: true,
             }
         })
+
+        // Initial Excel update
+        updateExcelForVoyage(voyage.id).catch(err => console.error('Excel update error:', err));
 
         return NextResponse.json(suivi)
     } catch (error: any) {

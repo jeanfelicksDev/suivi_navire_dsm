@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { updateExcelForVoyage } from "@/lib/excel-service";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -35,6 +36,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
                 }
             }
         })
+
+        // Trigger Excel update if an action is completed or updated
+        // This is done asynchronously (no await here to not slow down the response)
+        updateExcelForVoyage(updatedAction.traitement.voyageId).catch(err => console.error('Excel update error:', err));
 
         // After updating the action, check if all actions are complete to possibly mark Traitement as terminé
         const allActions = updatedAction.traitement.actions

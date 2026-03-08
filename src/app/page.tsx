@@ -554,31 +554,60 @@ export default function Home() {
       });
 
       if (res.ok) {
-        // Check if this action is "Attente Accostage" → update ETA on the voyage
         const traitement = naviresEnTraitement.find(t => t.id === traitementId);
         const closedAction = traitement?.actions.find(a => a.id === actionId);
-        const isAccostage = closedAction?.action
-          ?.toLowerCase()
-          .includes('accostage');
+        const isAccostage = closedAction?.action?.toLowerCase().includes('accostage');
+        const isDepart = closedAction?.action?.toLowerCase().includes('départ') || closedAction?.action?.toLowerCase().includes('depart');
 
-        if (isAccostage && traitement?.voyage?.id) {
-          await fetch(`/api/voyages/${traitement.voyage.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dateETA: actionDateCloture })
-          });
-        }
+        // Helper function to format date for prompts
+        const formatDate = (dateString: string) => {
+          const date = new Date(dateString);
+          return date.toLocaleDateString('fr-FR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        };
 
-        const isDepart = closedAction?.action
-          ?.toLowerCase()
-          .includes('départ') || closedAction?.action?.toLowerCase().includes('depart');
+        if (isAccostage && traitement?.voyage) {
+          const currentETD = traitement.voyage.dateETD;
+          const dETA = new Date(actionDateCloture);
+          const dETD = new Date(currentETD);
+          const diffDays = Math.ceil(Math.abs(dETA.getTime() - dETD.getTime()) / (1000 * 60 * 60 * 24));
 
-        if (isDepart && traitement?.voyage?.id) {
-          await fetch(`/api/voyages/${traitement.voyage.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dateETD: actionDateCloture })
-          });
+          if (dETA > dETD) {
+            if (window.confirm(`La différence de jour entre la date ETA et la date ETD est de ${diffDays} jours. Voulez-vous vraiment confirmer cette date ETA ?`)) {
+              const newETD = window.prompt(`La date ETA (${formatDate(actionDateCloture)}) dépasse la date ETD actuelle (${formatDate(currentETD)}).\n\nSaisir la nouvelle date ETD si vous souhaitez la corriger (YYYY-MM-DD):`, actionDateCloture);
+              await fetch(`/api/voyages/${traitement.voyage.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dateETA: actionDateCloture, ...(newETD && { dateETD: newETD }) })
+              });
+            }
+          } else {
+            await fetch(`/api/voyages/${traitement.voyage.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ dateETA: actionDateCloture })
+            });
+          }
+        } else if (isDepart && traitement?.voyage) {
+          const currentETA = traitement.voyage.dateETA;
+          const dETD = new Date(actionDateCloture);
+          const dETA = new Date(currentETA);
+          const diffDays = Math.ceil(Math.abs(dETD.getTime() - dETA.getTime()) / (1000 * 60 * 60 * 24));
+
+          if (dETA > dETD) {
+            if (window.confirm(`La différence de jour entre la date ETA et la date ETD est de ${diffDays} jours. Voulez-vous vraiment confirmer cette date ETD (${formatDate(actionDateCloture)}) ?`)) {
+              await fetch(`/api/voyages/${traitement.voyage.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dateETD: actionDateCloture })
+              });
+            }
+          } else {
+            await fetch(`/api/voyages/${traitement.voyage.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ dateETD: actionDateCloture })
+            });
+          }
         }
 
         // Refresh all for consistency
@@ -627,7 +656,7 @@ export default function Home() {
   };
 
   const handleDeleteSuivi = async (id: string) => {
-    if (window.confirm("Voulez-vous vraiment supprimer ce navire de la liste ?")) {
+    if (window.confirm("Voulez-vous vraiment supprimer ce navire du suivi ? Cette action est irréversible.")) {
       try {
         const res = await fetch(`/api/suivis/${id}`, { method: 'DELETE' });
         if (res.ok) {
@@ -641,6 +670,19 @@ export default function Home() {
         console.error('Failed to delete suivi:', error);
         alert("Une erreur réseau est survenue.");
       }
+    }
+  };
+
+  const handleQuickUpdateVoyage = async (voyageId: string, data: any) => {
+    try {
+      const res = await fetch(`/api/voyages/${voyageId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) fetchSuivis();
+    } catch (error) {
+      console.error('Failed to update voyage:', error);
     }
   };
 
@@ -945,7 +987,16 @@ export default function Home() {
                           return (
                             <>
                               <div className="flex items-center gap-1.5">
-                                <span className="text-xl font-bold">{formatDate(traitement.voyage.dateETA)}</span>
+                                <button
+                                  onClick={() => {
+                                    const newVal = window.prompt("Nouvelle date ETA (YYYY-MM-DD) :", traitement.voyage.dateETA);
+                                    if (newVal) handleQuickUpdateVoyage(traitement.voyage.id, { dateETA: newVal });
+                                  }}
+                                  className="text-xl font-bold hover:text-blue-600 transition-colors"
+                                  title="Modifier l'ETA"
+                                >
+                                  {formatDate(traitement.voyage.dateETA)}
+                                </button>
                                 {accostageAction && (
                                   <span className="text-[9px] bg-emerald-100 text-emerald-700 font-bold px-1.5 py-0.5 rounded uppercase tracking-wide">
                                     ✓ Accosté
@@ -965,7 +1016,16 @@ export default function Home() {
                           return (
                             <>
                               <div className="flex items-center gap-1.5">
-                                <span className="text-xl font-bold">{formatDate(traitement.voyage.dateETD)}</span>
+                                <button
+                                  onClick={() => {
+                                    const newVal = window.prompt("Nouvelle date ETD (YYYY-MM-DD) :", traitement.voyage.dateETD);
+                                    if (newVal) handleQuickUpdateVoyage(traitement.voyage.id, { dateETD: newVal });
+                                  }}
+                                  className="text-xl font-bold hover:text-blue-600 transition-colors"
+                                  title="Modifier l'ETD"
+                                >
+                                  {formatDate(traitement.voyage.dateETD)}
+                                </button>
                                 {departAction && (
                                   <span className="text-[9px] bg-sky-100 text-sky-700 font-bold px-1.5 py-0.5 rounded uppercase tracking-wide">
                                     ✓ Parti

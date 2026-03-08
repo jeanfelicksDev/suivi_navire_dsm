@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { updateExcelForVoyage } from "@/lib/excel-service";
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -55,6 +56,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
                 ...(dateETD !== undefined && { dateETD }),
             }
         })
+
+        // Trigger Excel update if an action is completed or updated
+        updateExcelForVoyage(updated.id).catch(err => console.error('Excel update error:', err));
+
         return NextResponse.json(updated)
     } catch (error) {
         console.error('Error updating voyage:', error)
