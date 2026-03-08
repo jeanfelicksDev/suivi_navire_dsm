@@ -555,7 +555,7 @@ export function Sidebar() {
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
             if (diffDays > 3) {
-                if (!window.confirm(`La durée du séjour (${diffDays} jours) est supérieure à 3 jours. Voulez-vous vraiment enregistrer ce voyage ?`)) {
+                if (!window.confirm(`La différence de jour entre la date ETA et la date ETD est de ${diffDays} jours. Voulez-vous vraiment confirmer cette date ETD (${formatDate(newVoyageETD)}) ?`)) {
                     return;
                 }
             }
@@ -629,7 +629,7 @@ export function Sidebar() {
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
             if (diffDays > 3) {
-                if (!window.confirm(`La durée du séjour (${diffDays} jours) est supérieure à 3 jours. Voulez-vous vraiment enregistrer ces modifications ?`)) {
+                if (!window.confirm(`La différence de jour entre la date ETA et la date ETD est de ${diffDays} jours. Voulez-vous vraiment confirmer cette date ETD (${formatDate(editVoyageETD)}) ?`)) {
                     return;
                 }
             }
