@@ -65,17 +65,19 @@ model ResetToken {
 }
 
 model Traitement {
-  id        String   @id @default(cuid())
-  navireId  String
-  voyageId  String
-  isTermine Boolean  @default(false)
-  createdAt DateTime @default(now())
-  userId    String?
-  actions   Action[]
-  navire    Navire   @relation(fields: [navireId], references: [id], onDelete: Cascade)
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  voyage    Voyage   @relation(fields: [voyageId], references: [id], onDelete: Cascade)
+  id                String   @id @default(cuid())
+  navireId          String
+  voyageId          String
+  isTermine         Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  userId            String?
+  selectedArmateurs String[] // Stores the list of armateurs selected for this suivi
+  actions           Action[]
+  navire            Navire   @relation(fields: [navireId], references: [id], onDelete: Cascade)
+  user              User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  voyage            Voyage   @relation(fields: [voyageId], references: [id], onDelete: Cascade)
 }
+
 
 model Action {
   id           String     @id @default(cuid())

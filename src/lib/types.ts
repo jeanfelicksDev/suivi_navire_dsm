@@ -28,7 +28,9 @@ export interface NavireEnTraitement {
     navire: Navire;
     voyage: Voyage;
     actions: Action[];
+    selectedArmateurs?: string[] | null;
     user?: { email: string, service: string, profil: string } | null;
     createdAt: string;
     isTermine?: boolean;
 }
+

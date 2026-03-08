@@ -12,24 +12,53 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
         const { id } = await params
         const body = await request.json()
-        const { action } = body
+        const { action: actionName } = body
 
-        const existingTraitement = await prisma.traitement.findUnique({ where: { id } });
+        const existingTraitement = await prisma.traitement.findUnique({
+            where: { id },
+            include: { selectedArmateurs: true } as any // Handle potential types sync delay
+        });
+
         if (!existingTraitement) return NextResponse.json({ error: "Introuvable" }, { status: 404 });
 
         if ((existingTraitement as any).userId !== (session.user as any).id) {
             return NextResponse.json({ error: "Interdit. Seul le créateur peut ajouter une action." }, { status: 403 });
         }
 
-        const newAction = await prisma.action.create({
-            data: {
-                traitementId: id,
-                action: action.trim(),
-                isComplete: false,
-            }
-        })
+        // Find if this is an "Individuelle" action
+        const template = await prisma.actionTemplate.findFirst({
+            where: { name: actionName.trim() }
+        });
 
-        return NextResponse.json(newAction)
+        const isIndividuelle = template?.type === "Individuelle";
+        const selectedArmateurs = (existingTraitement as any).selectedArmateurs || [];
+
+        if (isIndividuelle && selectedArmateurs.length > 0) {
+            const results = [];
+            for (const armateur of selectedArmateurs) {
+                const newAction = await prisma.action.create({
+                    data: {
+                        traitementId: id,
+                        action: actionName.trim(),
+                        armateur: armateur,
+                        isComplete: false,
+                    }
+                });
+                results.push(newAction);
+            }
+            return NextResponse.json(results[0]); // Return one as representative
+        } else {
+            const newAction = await prisma.action.create({
+                data: {
+                    traitementId: id,
+                    action: actionName.trim(),
+                    armateur: null,
+                    isComplete: false,
+                }
+            });
+            return NextResponse.json(newAction);
+        }
+
     } catch (error) {
         console.error('Error creating action:', error)
         return NextResponse.json({ error: 'Failed to create action' }, { status: 500 })

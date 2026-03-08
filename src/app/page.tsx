@@ -1086,7 +1086,16 @@ export default function Home() {
                         >
                           {(() => {
                             // Bucket both visible and hidden actions by group (Commune or Armateur)
-                            const groups: Record<string, { visible: any[], hidden: any[] }> = {};
+                            const groups: Record<string, { visible: any[], hidden: any[] }> = {
+                              "Commune": { visible: [], hidden: [] }
+                            };
+
+                            // Ensure all selected armateurs have a group (even if empty)
+                            if (traitement.selectedArmateurs) {
+                              traitement.selectedArmateurs.forEach(arm => {
+                                if (!groups[arm]) groups[arm] = { visible: [], hidden: [] };
+                              });
+                            }
 
                             traitement.actions.forEach(a => {
                               const key = a.armateur || "Commune";
@@ -1097,6 +1106,7 @@ export default function Home() {
                                 groups[key].visible.push(a);
                               }
                             });
+
 
                             const renderActionsInGroup = (visible: any[], hidden: any[]) => (
                               <>

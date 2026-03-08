@@ -112,35 +112,25 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Un suivi est déjà en cours pour ce voyage dans votre espace.' }, { status: 400 })
         }
 
-        // 4. Create Traitement with actions from templates
-        const templates = await prisma.actionTemplate.findMany();
-        const actionsToCreate = [];
-
-        for (const template of templates) {
-            if (template.type === "Individuelle" && selectedArmateurs && selectedArmateurs.length > 0) {
-                // Pour chaque armateur sélectionné, on répète l'action
-                for (const armateurName of selectedArmateurs) {
-                    actionsToCreate.push({
-                        action: template.name,
-                        armateur: armateurName,
-                        isComplete: false,
-                    });
-                }
-            } else {
-                // Action Commune ou sans sélection d'armateur
-                actionsToCreate.push({
-                    action: template.name,
-                    armateur: null,
-                    isComplete: false,
-                });
+        // 4. Create Traitement with actions from templates (Only common actions by default)
+        const templates = await prisma.actionTemplate.findMany({
+            where: {
+                type: "Commune"
             }
-        }
+        });
+        const actionsToCreate = templates.map(template => ({
+            action: template.name,
+            armateur: null,
+            isComplete: false,
+        }));
+
 
         const suivi = await prisma.traitement.create({
             data: {
                 navireId: navire.id,
                 voyageId: voyage.id,
                 userId: userId as string,
+                selectedArmateurs: selectedArmateurs || [],
                 actions: {
                     create: actionsToCreate
                 }
@@ -151,6 +141,7 @@ export async function POST(request: Request) {
                 actions: true,
             }
         })
+
 
         // Initial Excel update
         updateExcelForVoyage(voyage.id).catch(err => console.error('Excel update error:', err));
