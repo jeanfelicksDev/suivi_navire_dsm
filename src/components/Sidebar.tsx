@@ -534,6 +534,23 @@ export function Sidebar() {
     const handleAddVoyage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (newVoyageNavire && newVoyageNum.trim() && newVoyageETA && newVoyageETD) {
+            const eta = new Date(newVoyageETA);
+            const etd = new Date(newVoyageETD);
+
+            if (etd < eta) {
+                alert("Erreur: La date d'ETD ne peut pas être antérieure à la date d'ETA.");
+                return;
+            }
+
+            const diffTime = Math.abs(etd.getTime() - eta.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays > 3) {
+                if (!window.confirm(`La durée du séjour (${diffDays} jours) est supérieure à 3 jours. Voulez-vous vraiment enregistrer ce voyage ?`)) {
+                    return;
+                }
+            }
+
             try {
                 const res = await fetch('/api/voyages', {
                     method: 'POST',
@@ -591,6 +608,23 @@ export function Sidebar() {
 
     const handleSaveEditVoyage = async (id: string) => {
         if (editVoyageNum.trim() && editVoyageETA && editVoyageETD) {
+            const eta = new Date(editVoyageETA);
+            const etd = new Date(editVoyageETD);
+
+            if (etd < eta) {
+                alert("Erreur: La date d'ETD ne peut pas être antérieure à la date d'ETA.");
+                return;
+            }
+
+            const diffTime = Math.abs(etd.getTime() - eta.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays > 3) {
+                if (!window.confirm(`La durée du séjour (${diffDays} jours) est supérieure à 3 jours. Voulez-vous vraiment enregistrer ces modifications ?`)) {
+                    return;
+                }
+            }
+
             try {
                 const res = await fetch(`/api/voyages/${id}`, {
                     method: 'PATCH',
@@ -1302,14 +1336,22 @@ export function Sidebar() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {voyages.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan={6} className="p-6 text-center text-slate-500 italic">
-                                                        Aucun voyage enregistré pour le moment.
-                                                    </td>
-                                                </tr>
-                                            ) : (
-                                                voyages.map((voyage, index) => {
+                                            {(() => {
+                                                const filteredVoyagesTable = newVoyageNavire
+                                                    ? voyages.filter(v => v.navireId === newVoyageNavire.id)
+                                                    : voyages;
+
+                                                if (filteredVoyagesTable.length === 0) {
+                                                    return (
+                                                        <tr>
+                                                            <td colSpan={6} className="p-6 text-center text-slate-500 italic">
+                                                                Aucun voyage enregistré pour {newVoyageNavire ? "ce navire" : "le moment"}.
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                }
+
+                                                return filteredVoyagesTable.map((voyage, index) => {
                                                     const navireLiaison = navires.find(n => n.id === voyage.navireId);
                                                     return (
                                                         <tr key={voyage.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
@@ -1416,8 +1458,8 @@ export function Sidebar() {
                                                             </td>
                                                         </tr>
                                                     );
-                                                })
-                                            )}
+                                                });
+                                            })()}
                                         </tbody>
                                     </table>
                                 </div>
