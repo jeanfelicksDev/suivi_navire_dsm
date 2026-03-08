@@ -32,6 +32,7 @@ export async function GET(request: Request) {
             where: whereClause,
             include: {
                 navire: true,
+                slotteurs: true,
                 traitements: {
                     include: {
                         actions: true

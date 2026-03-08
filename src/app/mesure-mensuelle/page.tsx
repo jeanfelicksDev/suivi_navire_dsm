@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Calendar, Download, RefreshCw, Ship, AlertCircle } from "lucide-react";
 
 interface Action {
@@ -23,7 +23,9 @@ interface Voyage {
     dateETD: string;
     navire: {
         nomNavire: string;
+        armateurCoque: string;
     };
+    slotteurs?: { id: string; nom: string }[];
     traitements: Traitement[];
 }
 
@@ -46,6 +48,7 @@ export default function MesureMensuellePage() {
     const [voyages, setVoyages] = useState<Voyage[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [selectedArmateur, setSelectedArmateur] = useState<string>("Tous");
 
     const fetchMesures = useCallback(async () => {
         setLoading(true);
@@ -66,6 +69,25 @@ export default function MesureMensuellePage() {
         fetchMesures();
     }, [fetchMesures]);
 
+    // Build unique armateur list from loaded voyages
+    const armateurs = useMemo(() => {
+        const set = new Set<string>();
+        voyages.forEach(v => {
+            if (v.navire?.armateurCoque) set.add(v.navire.armateurCoque);
+            v.slotteurs?.forEach(s => set.add(s.nom));
+        });
+        return ["Tous", ...Array.from(set).sort()];
+    }, [voyages]);
+
+    // Filter voyages by selected armateur
+    const filteredVoyages = useMemo(() => {
+        if (selectedArmateur === "Tous") return voyages;
+        return voyages.filter(v =>
+            v.navire?.armateurCoque === selectedArmateur ||
+            v.slotteurs?.some(s => s.nom === selectedArmateur)
+        );
+    }, [voyages, selectedArmateur]);
+
     const getActionDate = (v: Voyage, keywords: string[]) => {
         const allActions = v.traitements.flatMap(t => t.actions);
         const matches = allActions.filter(a =>
@@ -74,7 +96,6 @@ export default function MesureMensuellePage() {
             keywords.some(k => a.action.toLowerCase().includes(k.toLowerCase()))
         );
         if (matches.length === 0) return "-";
-        // Get the latest completion date if multiple matches
         const sorted = matches.sort((a, b) => b.dateCloture!.localeCompare(a.dateCloture!));
         return formatDate(sorted[0].dateCloture!);
     };
@@ -110,7 +131,22 @@ export default function MesureMensuellePage() {
                     <p className="text-slate-500 mt-1 font-medium">Tableau de performance des transmissions navires</p>
                 </div>
 
-                <div className="flex gap-4 bg-white p-2 rounded-2xl shadow-sm border border-slate-200">
+                <div className="flex gap-3 items-center bg-white p-2 rounded-2xl shadow-sm border border-slate-200">
+                    {/* Armateur filter */}
+                    <div className="flex items-center gap-2 border-r border-slate-200 pr-3">
+                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Armateur</span>
+                        <select
+                            value={selectedArmateur}
+                            onChange={(e) => setSelectedArmateur(e.target.value)}
+                            className="bg-transparent font-bold text-slate-700 px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 max-w-[180px]"
+                        >
+                            {armateurs.map(arm => (
+                                <option key={arm} value={arm}>{arm}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Month filter */}
                     <select
                         value={month}
                         onChange={(e) => setMonth(parseInt(e.target.value))}
@@ -120,6 +156,8 @@ export default function MesureMensuellePage() {
                             <option key={i} value={i + 1}>{m}</option>
                         ))}
                     </select>
+
+                    {/* Year filter */}
                     <select
                         value={year}
                         onChange={(e) => setYear(parseInt(e.target.value))}
@@ -129,6 +167,7 @@ export default function MesureMensuellePage() {
                             <option key={y} value={y}>{y}</option>
                         ))}
                     </select>
+
                     <button
                         onClick={fetchMesures}
                         className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-500"
@@ -142,6 +181,18 @@ export default function MesureMensuellePage() {
                 <div className="bg-red-50 border border-red-200 p-4 rounded-xl flex items-center gap-3 text-red-700 mb-6">
                     <AlertCircle className="w-5 h-5" />
                     <p className="font-medium">{error}</p>
+                </div>
+            )}
+
+            {/* Active filter badge */}
+            {selectedArmateur !== "Tous" && (
+                <div className="mb-4 flex items-center gap-2">
+                    <span className="text-xs text-slate-500 font-medium">Filtré par armateur :</span>
+                    <span className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">
+                        {selectedArmateur}
+                        <button onClick={() => setSelectedArmateur("Tous")} className="ml-1 hover:text-blue-900">✕</button>
+                    </span>
+                    <span className="text-xs text-slate-400">({filteredVoyages.length} voyage{filteredVoyages.length > 1 ? 's' : ''})</span>
                 </div>
             )}
 
@@ -180,18 +231,25 @@ export default function MesureMensuellePage() {
                             </tr>
                         ))}
 
-                        {!loading && voyages.length === 0 && (
+                        {!loading && filteredVoyages.length === 0 && (
                             <tr>
                                 <td colSpan={12} className="px-6 py-12 text-center">
                                     <Ship className="w-12 h-12 text-slate-200 mx-auto mb-3" />
-                                    <p className="text-slate-400 font-medium">Aucun mouvement trouvé pour {MONTHS_FR[month - 1]} {year}</p>
+                                    <p className="text-slate-400 font-medium">
+                                        {selectedArmateur !== "Tous"
+                                            ? `Aucun mouvement pour l'armateur "${selectedArmateur}" en ${MONTHS_FR[month - 1]} ${year}`
+                                            : `Aucun mouvement trouvé pour ${MONTHS_FR[month - 1]} ${year}`}
+                                    </p>
                                 </td>
                             </tr>
                         )}
 
-                        {!loading && voyages.map((v) => (
+                        {!loading && filteredVoyages.map((v) => (
                             <tr key={v.id} className="hover:bg-slate-50/50 transition-colors group">
-                                <td className="px-6 py-4 font-bold text-slate-900 border-r border-slate-50">{v.navire.nomNavire}</td>
+                                <td className="px-6 py-4 font-bold text-slate-900 border-r border-slate-50">
+                                    <div>{v.navire.nomNavire}</div>
+                                    <div className="text-[10px] font-normal text-slate-400 mt-0.5">{v.navire.armateurCoque}</div>
+                                </td>
                                 <td className="px-6 py-4 font-mono font-bold text-blue-600 border-r border-slate-50">{v.numVoyage}</td>
 
                                 <td className="px-4 py-4 text-slate-600 font-medium border-r border-slate-50 bg-amber-50/10">{formatDate(v.dateETA)}</td>
