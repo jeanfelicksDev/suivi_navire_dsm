@@ -25,29 +25,26 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             return NextResponse.json({ error: "Interdit. Seul le créateur peut ajouter une action." }, { status: 403 });
         }
 
-        // Find if this is an "Individuelle" action
-        const template = await prisma.actionTemplate.findFirst({
-            where: { name: actionName.trim() }
-        });
-
-        const isIndividuelle = template?.type === "Individuelle";
         const selectedArmateurs = (existingTraitement as any).selectedArmateurs || [];
 
-        if (isIndividuelle && selectedArmateurs.length > 0) {
+        // Distribute action to all armateurs if any are tracking this suivi
+        if (selectedArmateurs.length > 0) {
             const results = [];
-            for (const armateur of selectedArmateurs) {
+            for (const armateurName of selectedArmateurs) {
                 const newAction = await prisma.action.create({
                     data: {
                         traitementId: id,
                         action: actionName.trim(),
-                        armateur: armateur,
+                        armateur: armateurName, // Assign to armateur zone
                         isComplete: false,
                     }
                 });
                 results.push(newAction);
             }
-            return NextResponse.json(results[0]); // Return one as representative
+            // Return one result as confirmation
+            return NextResponse.json(results[0]);
         } else {
+            // No armateurs selected (fallback/older data), create a single common action
             const newAction = await prisma.action.create({
                 data: {
                     traitementId: id,
@@ -58,6 +55,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             });
             return NextResponse.json(newAction);
         }
+
 
     } catch (error) {
         console.error('Error creating action:', error)
