@@ -964,6 +964,7 @@ export default function Home() {
                                         handleDeleteAction={handleDeleteAction}
                                         toggleHideAction={toggleHideAction}
                                         deadline={calculateDeadline(action.action, traitement, actionTemplates)}
+                                        isReadOnly={traitement.userId && traitement.userId !== (session?.user as any)?.id}
                                       />
                                     ))
                                   )}
