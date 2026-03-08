@@ -137,11 +137,17 @@ export function Sidebar() {
 
     const handleAddSlotteur = async (e: React.FormEvent) => {
         e.preventDefault();
-        const finalNom = toTitleCase(newSlotteurNom || slotteurNomQuery);
+        const finalNom = toTitleCase(newSlotteurNom || slotteurNomQuery).trim();
         if (finalNom && newSlotteurVoyageId) {
+            // Uniquement les armateurs de la table autorisés
+            if (!armateurs.some(a => a.toLowerCase() === finalNom.toLowerCase())) {
+                alert("Le slotteur doit être choisi dans la liste des armateurs enregistrés dans le référentiel.");
+                return;
+            }
+
             // Vérification doublon : même nom ET même voyage
             const alreadyExists = slotteurs.some(
-                s => s.nom.toUpperCase() === finalNom && s.voyageId === newSlotteurVoyageId
+                s => s.nom.toUpperCase() === finalNom.toUpperCase() && s.voyageId === newSlotteurVoyageId
             );
             if (alreadyExists) {
                 alert(`Le slotteur "${finalNom}" est déjà associé à ce voyage.`);
@@ -151,7 +157,7 @@ export function Sidebar() {
             // Vérification coque : impossible d'être slotteur pour son propre navire
             const selectedVoyage = voyages.find(v => v.id === newSlotteurVoyageId);
             const selectedNavire = navires.find(n => n.id === selectedVoyage?.navireId);
-            if (selectedNavire && selectedNavire.armateurCoque.toUpperCase() === finalNom) {
+            if (selectedNavire && selectedNavire.armateurCoque.toUpperCase() === finalNom.toUpperCase()) {
                 alert(`"${finalNom}" est l'armateur COQUE de ${selectedNavire.nomNavire} et ne peut pas être ajouté comme slotteur sur ce navire.`);
                 return;
             }
@@ -369,6 +375,12 @@ export function Sidebar() {
         e.preventDefault();
         const armateurCoqueToSubmit = (newNavireArmateur || navireArmateurQuery).trim();
         if (newNavireNom.trim() && armateurCoqueToSubmit) {
+            // Uniquement les armateurs de la table autorisés
+            if (!armateurs.some(a => a.toLowerCase() === armateurCoqueToSubmit.toLowerCase())) {
+                alert("L'armateur doit être choisi dans la liste des armateurs enregistrés dans le référentiel.");
+                return;
+            }
+
             try {
                 const res = await fetch('/api/navires', {
                     method: 'POST',
@@ -421,6 +433,12 @@ export function Sidebar() {
     const handleSaveEditNavire = async (id: string) => {
         const armateurCoqueToSubmit = (editNavireArmateur || editNavireArmateurQuery).trim();
         if (editNavireNom.trim() && armateurCoqueToSubmit) {
+            // Uniquement les armateurs de la table autorisés
+            if (!armateurs.some(a => a.toLowerCase() === armateurCoqueToSubmit.toLowerCase())) {
+                alert("L'armateur doit être choisi dans la liste des armateurs enregistrés dans le référentiel.");
+                return;
+            }
+
             try {
                 const res = await fetch(`/api/navires/${id}`, {
                     method: 'PATCH',
@@ -1026,14 +1044,6 @@ export function Sidebar() {
                                                         </Combobox.Button>
                                                     </div>
                                                     <Combobox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm z-50">
-                                                        {navireArmateurQuery.length > 0 && !filteredArmateurs.includes(navireArmateurQuery) && (
-                                                            <Combobox.Option
-                                                                value={navireArmateurQuery}
-                                                                className={({ active }) => `relative cursor-default select-none py-2 pl-10 pr-4 ${active ? 'bg-blue-600 text-white' : 'text-gray-900'}`}
-                                                            >
-                                                                Créer "{navireArmateurQuery}"
-                                                            </Combobox.Option>
-                                                        )}
                                                         {filteredArmateurs.map((person) => (
                                                             <Combobox.Option
                                                                 key={person}
@@ -1117,14 +1127,6 @@ export function Sidebar() {
                                                                                 </Combobox.Button>
                                                                             </div>
                                                                             <Combobox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm z-50">
-                                                                                {editNavireArmateurQuery.length > 0 && !filteredEditArmateurs.includes(editNavireArmateurQuery) && (
-                                                                                    <Combobox.Option
-                                                                                        value={editNavireArmateurQuery}
-                                                                                        className={({ active }) => `relative cursor-default select-none py-2 pl-4 pr-4 ${active ? 'bg-blue-600 text-white' : 'text-gray-900'}`}
-                                                                                    >
-                                                                                        Créer "{editNavireArmateurQuery}"
-                                                                                    </Combobox.Option>
-                                                                                )}
                                                                                 {filteredEditArmateurs.map((person) => (
                                                                                     <Combobox.Option
                                                                                         key={person}
@@ -1644,14 +1646,6 @@ export function Sidebar() {
                                                         </Combobox.Button>
                                                     </div>
                                                     <Combobox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm z-50">
-                                                        {slotteurNomQuery.length > 0 && !armateurs.includes(slotteurNomQuery) && (
-                                                            <Combobox.Option
-                                                                value={slotteurNomQuery}
-                                                                className={({ active }) => `relative cursor-default select-none py-2 pl-4 pr-4 ${active ? 'bg-sky-600 text-white' : 'text-gray-900'}`}
-                                                            >
-                                                                Créer "{slotteurNomQuery}"
-                                                            </Combobox.Option>
-                                                        )}
                                                         {armateurs.filter(a => a.toLowerCase().includes(slotteurNomQuery.toLowerCase())).map((arm) => (
                                                             <Combobox.Option
                                                                 key={arm}
