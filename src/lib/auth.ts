@@ -50,6 +50,7 @@ export const authOptions: NextAuthOptions = {
                     canCreateArmateur: user.canCreateArmateur,
                     canCreateAction: user.canCreateAction,
                     canViewAllSuivis: user.canViewAllSuivis,
+                    canManageMesures: user.canManageMesures,
                 };
             }
         })
@@ -65,6 +66,7 @@ export const authOptions: NextAuthOptions = {
                 token.canCreateArmateur = (user as any).canCreateArmateur;
                 token.canCreateAction = (user as any).canCreateAction;
                 token.canViewAllSuivis = (user as any).canViewAllSuivis;
+                token.canManageMesures = (user as any).canManageMesures;
             }
             // Update permissions if a session update is triggered
             if (trigger === "update" && session) {
@@ -73,6 +75,7 @@ export const authOptions: NextAuthOptions = {
                 token.canCreateArmateur = session.canCreateArmateur ?? token.canCreateArmateur;
                 token.canCreateAction = session.canCreateAction ?? token.canCreateAction;
                 token.canViewAllSuivis = session.canViewAllSuivis ?? token.canViewAllSuivis;
+                token.canManageMesures = session.canManageMesures ?? token.canManageMesures;
             }
             return token;
         },
@@ -86,6 +89,7 @@ export const authOptions: NextAuthOptions = {
                 (session.user as any).canCreateArmateur = token.canCreateArmateur;
                 (session.user as any).canCreateAction = token.canCreateAction;
                 (session.user as any).canViewAllSuivis = token.canViewAllSuivis;
+                (session.user as any).canManageMesures = token.canManageMesures;
             }
             return session;
         }

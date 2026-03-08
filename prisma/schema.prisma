@@ -50,7 +50,10 @@ model User {
   canCreateNavire     Boolean      @default(false)
   canCreateVoyage     Boolean      @default(false)
   canViewAllSuivis    Boolean      @default(false)
+  canManageMesures    Boolean      @default(false)
   needsPasswordChange Boolean      @default(false)
+
+
   resetTokens         ResetToken[]
   traitements         Traitement[]
 }
