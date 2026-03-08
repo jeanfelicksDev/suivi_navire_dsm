@@ -45,6 +45,8 @@ export async function updateExcelForVoyage(voyageId: string) {
 
         // 3. Load Workbook
         const filePath = path.join(process.cwd(), 'MESURE_NAVIRES_2026.xlsx');
+
+
         if (!fs.existsSync(filePath)) {
             console.error(`Excel file not found at ${filePath}`);
             return;
@@ -62,12 +64,12 @@ export async function updateExcelForVoyage(voyageId: string) {
         }
 
         // 4. Find the row for this voyage
-        // Rows start at 6 based on previous peek (Row 5 is header)
+        // Rows start at 7 based on actual file structure (Row 6 is subheader)
         let foundRowIndex = -1;
         worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-            if (rowNumber < 6) return;
-            const navireInExcel = row.getCell(2).value?.toString().trim();
-            const voyageInExcel = row.getCell(3).value?.toString().trim();
+            if (rowNumber < 7) return;
+            const navireInExcel = row.getCell(1).value?.toString().trim(); // A
+            const voyageInExcel = row.getCell(2).value?.toString().trim(); // B
 
             if (navireInExcel === voyage.navire.nomNavire.trim() &&
                 voyageInExcel === voyage.numVoyage.trim()) {
@@ -75,28 +77,37 @@ export async function updateExcelForVoyage(voyageId: string) {
             }
         });
 
-        // 5. If not found, find first empty row after row 5
+        // 5. If not found, find first empty row after row 6
         if (foundRowIndex === -1) {
-            let nextEmptyRow = 6;
-            while (worksheet.getRow(nextEmptyRow).getCell(2).value) {
+            let nextEmptyRow = 7;
+            while (worksheet.getRow(nextEmptyRow).getCell(1).value) {
                 nextEmptyRow++;
             }
             foundRowIndex = nextEmptyRow;
             // Pre-fill Navire and Voyage
-            worksheet.getRow(foundRowIndex).getCell(2).value = voyage.navire.nomNavire;
-            worksheet.getRow(foundRowIndex).getCell(3).value = voyage.numVoyage;
+            worksheet.getRow(foundRowIndex).getCell(1).value = voyage.navire.nomNavire;
+            worksheet.getRow(foundRowIndex).getCell(2).value = voyage.numVoyage;
         }
 
         const row = worksheet.getRow(foundRowIndex);
 
         // 6. Fill Data
-        // Col 4: ETA
-        row.getCell(4).value = voyage.dateETA;
-        // Col 8: ETD
-        row.getCell(8).value = voyage.dateETD;
+        // Mapping based on observations:
+        // Col 1: NAVIRE
+        // Col 2: VOYAGE
+        // Col 3: ETA (C)
+        // Col 4: TOP IMP (D)
+        // Col 5: ZIP IMP (E)
+        // Col 6: MANIFESTE IMP (F)
+        // Col 7: ETD (G)
+        // Col 8: TOP EXP (H)
+        // Col 9: ZIP EXP (I)
+        // Col 10: MANIFESTE EXP (J)
+        // Col 11: TAUX REALISATION (K)
 
-        // Collect actions from all Traitments (aggregating if multiple people track it, 
-        // taking the latest closure date for each action category)
+        row.getCell(3).value = voyage.dateETA; // C
+        row.getCell(7).value = voyage.dateETD; // G
+
         const allActions = voyage.traitements.flatMap(t => t.actions);
 
         const getClosureDate = (keywords: string[]) => {
@@ -106,37 +117,28 @@ export async function updateExcelForVoyage(voyageId: string) {
                 keywords.some(k => a.action.toLowerCase().includes(k.toLowerCase()))
             );
             if (matches.length === 0) return null;
-            // Return the latest closure date if multiple matches
             return matches.sort((a, b) => b.dateCloture!.localeCompare(a.dateCloture!))[0].dateCloture;
         };
 
-        // Mapping based on observations:
-        // Col 5: TDI Import
         const tdiImp = getClosureDate(['Top Import', 'TDI Import']);
-        if (tdiImp) row.getCell(5).value = tdiImp;
+        if (tdiImp) row.getCell(4).value = tdiImp; // D
 
-        // Col 6: ZIP Import
         const zipImp = getClosureDate(['Fichier Compressé Import', 'ZIP Import', 'fichier import compresse']);
-        if (zipImp) row.getCell(6).value = zipImp;
+        if (zipImp) row.getCell(5).value = zipImp; // E
 
-        // Col 7: Manifeste Import
         const manImp = getClosureDate(['Manifeste Import', 'Douane-PAA']);
-        if (manImp) row.getCell(7).value = manImp;
+        if (manImp) row.getCell(6).value = manImp; // F
 
-        // Col 9: TDI Export
         const tdiExp = getClosureDate(['Top Export', 'TDI Export']);
-        if (tdiExp) row.getCell(9).value = tdiExp;
+        if (tdiExp) row.getCell(8).value = tdiExp; // H
 
-        // Col 10: ZIP Export
         const zipExp = getClosureDate(['Fichier Compressé Export', 'ZIP Export', 'fichier export compresse']);
-        if (zipExp) row.getCell(10).value = zipExp;
+        if (zipExp) row.getCell(9).value = zipExp; // I
 
-        // Col 11: Manifeste Export
         const manExp = getClosureDate(['Manifeste Export']);
-        if (manExp) row.getCell(11).value = manExp;
+        if (manExp) row.getCell(10).value = manExp; // J
 
         // 6.5 Calculate Taux de réalisation
-        // Based on the set of required actions (Import/Export TDI, ZIP, Manifeste)
         const requiredActionKeywords = [
             ['Top Import', 'TDI Import'],
             ['Fichier Compressé Import', 'ZIP Import'],
@@ -153,14 +155,34 @@ export async function updateExcelForVoyage(voyageId: string) {
 
         const totalActions = requiredActionKeywords.length;
         const rate = (completedCount / totalActions) * 100;
-        row.getCell(12).value = `${rate.toFixed(0)}%`;
+        row.getCell(11).value = `${rate.toFixed(0)}%`; // K
 
         // 7. Commit changes
         row.commit();
-        await workbook.xlsx.writeFile(filePath);
-        console.log(`Excel updated for voyage ${voyage.navire.nomNavire} / ${voyage.numVoyage} in sheet ${sheetName}`);
 
-    } catch (error) {
-        console.error('Error updating Excel:', error);
+        try {
+            await workbook.xlsx.writeFile(filePath);
+            console.log(`Excel updated for voyage ${voyage.navire.nomNavire} / ${voyage.numVoyage} in sheet ${sheetName}`);
+        } catch (writeError: any) {
+            if (writeError.code === 'EBUSY') {
+                const ext = path.extname(filePath);
+                const base = path.basename(filePath, ext);
+                const copyPath = path.join(path.dirname(filePath), `${base}_COPY${ext}`);
+
+                console.warn(`Le fichier principal est verrouillé. Tentative d'écriture dans : ${copyPath}`);
+                await workbook.xlsx.writeFile(copyPath);
+                console.log(`Données sauvegardées avec succès dans : ${copyPath}`);
+            } else {
+                throw writeError;
+            }
+        }
+
+    } catch (error: any) {
+        if (error.code === 'EBUSY') {
+            console.error('Erreur: Le fichier Excel est ouvert. Veuillez le fermer ou consulter la copie _COPY.');
+        } else {
+            console.error('Error updating Excel:', error);
+        }
     }
 }
+

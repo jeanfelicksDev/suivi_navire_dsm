@@ -705,8 +705,16 @@ export function Sidebar() {
                         </button>
                     )}
 
+                    <Link href="/mesure-mensuelle" className="block mt-2">
+                        <button className="flex items-center gap-4 p-3.5 rounded-xl hover:bg-slate-800/60 hover:text-white transition-all text-left w-full group">
+                            <ActivitySquare className="w-5 h-5 text-slate-500 group-hover:text-cyan-400 transition-colors" />
+                            <span className="font-bold text-[15px]">Mésure Mensuelle</span>
+                        </button>
+                    </Link>
+
                     {isAdmin && (
-                        <Link href="/admin" className="block mt-4">
+                        <Link href="/admin" className="block mt-2">
+
                             <button className="flex items-center gap-4 p-3.5 rounded-xl hover:bg-slate-800/60 hover:text-white transition-all text-left w-full group">
                                 <Users className="w-5 h-5 text-slate-500 group-hover:text-purple-400 transition-colors" />
                                 <span className="font-bold text-[15px]">Administration</span>
