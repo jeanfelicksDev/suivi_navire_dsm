@@ -1,14 +1,27 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user) {
+            return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+        }
+
+        const isAdmin = (session.user as any).role === "ADMIN";
+        const userId = (session.user as any).id;
+
         const suivis = await prisma.traitement.findMany({
+            where: isAdmin ? {} : { userId },
             include: {
                 navire: true,
                 voyage: true,
+                user: { select: { email: true, service: true, profil: true } },
                 actions: {
                     orderBy: {
                         position: 'asc'
@@ -73,16 +86,24 @@ export async function POST(request: Request) {
             })
         }
 
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user) {
+            return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+        }
+
+        const userId = (session.user as any).id;
+
         // 3. Check if an ACTIVE Traitement already exists for this Voyage
         const existingSuivi = await prisma.traitement.findFirst({
             where: {
                 voyageId: voyage.id,
-                isTermine: false
+                isTermine: false,
+                userId: userId // Prevent creating duplicate traitment for the same user
             }
         })
 
         if (existingSuivi) {
-            return NextResponse.json({ error: 'Un suivi est déjà en cours pour ce voyage.' }, { status: 400 })
+            return NextResponse.json({ error: 'Un suivi est déjà en cours pour ce voyage dans votre espace.' }, { status: 400 })
         }
 
         // 4. Create Traitement
@@ -90,6 +111,7 @@ export async function POST(request: Request) {
             data: {
                 navireId: navire.id,
                 voyageId: voyage.id,
+                userId,
                 actions: {
                     create: []
                 }

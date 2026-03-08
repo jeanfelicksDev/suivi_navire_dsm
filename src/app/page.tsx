@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Plus, X, Trash2, Check, CheckCircle, RefreshCcw, GripVertical, EyeOff, Eye, Search } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import type { NavireEnTraitement, Action } from "@/lib/types";
 import {
   DndContext,
@@ -302,8 +304,16 @@ function SortableAction({
 }
 
 export default function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [naviresEnTraitement, setNaviresEnTraitement] = useState<NavireEnTraitement[]>([]);
   const [hiddenActionIds, setHiddenActionIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    }
+  }, [status, router]);
 
   useEffect(() => {
     try {
@@ -822,7 +832,14 @@ export default function Home() {
                   <div className="flex-1">
                     {/* Card Header row */}
                     <div className="flex flex-wrap gap-12 mb-5 text-slate-900">
-                      <div className="flex flex-col">
+                      {(session?.user as any)?.role === 'ADMIN' && traitement.user && (
+                        <div className="flex flex-col justify-center border-l-4 border-purple-500 pl-3 bg-purple-50/50 py-1 rounded-r">
+                          <span className="text-sm font-bold text-purple-700">{traitement.user.email}</span>
+                          <span className="text-[10px] uppercase tracking-wider text-purple-400 font-bold mt-0.5 whitespace-nowrap">Créateur ({traitement.user.service})</span>
+                        </div>
+                      )}
+
+                      <div className="flex flex-col justify-center">
                         <span className="text-xl font-bold">{traitement.navire.nomNavire}</span>
                         <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mt-0.5">Navire</span>
                       </div>

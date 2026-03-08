@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Ship, Route, ActivitySquare, X, Edit2, Trash2, Check, ChevronsUpDown, Briefcase, Search } from "lucide-react";
+import { Ship, Route, ActivitySquare, X, Edit2, Trash2, Check, ChevronsUpDown, Briefcase, Search, LogOut, Users, User } from "lucide-react";
 import { Combobox } from '@headlessui/react';
+import { useSession, signOut } from "next-auth/react";
+import Link from 'next/link';
 
 // Helper to format date YYYY-MM-DD to DD/MM/YYYY
 const formatDate = (dateStr: string) => {
@@ -17,6 +19,9 @@ const toTitleCase = (str: string) => {
 };
 
 export function Sidebar() {
+    const { data: session } = useSession();
+    const isAdmin = (session?.user as any)?.role === "ADMIN";
+
     const notifyDataUpdate = () => {
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new Event('globalDataUpdate'));
@@ -649,10 +654,44 @@ export function Sidebar() {
                         <span className="font-bold text-[15px]">Créer Action</span>
                     </button>
 
+                    {isAdmin && (
+                        <Link href="/admin" className="block mt-4">
+                            <button className="flex items-center gap-4 p-3.5 rounded-xl hover:bg-slate-800/60 hover:text-white transition-all text-left w-full group">
+                                <Users className="w-5 h-5 text-slate-500 group-hover:text-purple-400 transition-colors" />
+                                <span className="font-bold text-[15px]">Administration</span>
+                            </button>
+                        </Link>
+                    )}
+
                 </nav>
 
-                <div className="mt-auto pt-8 border-t border-white/5 text-xs text-slate-600 text-center font-medium">
-                    © 2026 Admin Dashboard
+                <div className="mt-auto pt-6 border-t border-white/5 space-y-4">
+                    {session?.user && (
+                        <div className="bg-slate-800/50 rounded-xl p-4 flex flex-col gap-2 relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center shrink-0">
+                                    <User className="w-4 h-4 text-slate-400" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-bold text-white truncate">{session.user.email}</p>
+                                    <p className="text-xs text-slate-400 capitalize">
+                                        {(session.user as any).role} — {(session.user as any).service}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => signOut({ callbackUrl: '/login' })}
+                                className="w-full mt-2 flex items-center justify-center gap-2 py-2 px-3 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors text-sm font-semibold"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                Déconnexion
+                            </button>
+                        </div>
+                    )}
+                    <div className="text-xs text-slate-600 text-center font-medium">
+                        © 2026 Admin Dashboard
+                    </div>
                 </div>
             </aside>
 

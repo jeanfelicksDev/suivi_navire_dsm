@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
+import { Providers } from "./providers";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -14,21 +17,32 @@ export const metadata: Metadata = {
   description: "Suivi des navires et des opérations portuaires",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await getServerSession(authOptions);
   return (
     <html lang="fr">
       <body
         className={`${inter.variable} antialiased flex`}
         style={{ fontFamily: "var(--font-inter), sans-serif" }}
       >
-        <Sidebar />
-        <div className="flex-1 ml-72 min-h-screen bg-[#f1f5f9]">
-          {children}
-        </div>
+        <Providers>
+          {session ? (
+            <>
+              <Sidebar />
+              <div className="flex-1 ml-72 min-h-screen bg-[#f1f5f9]">
+                {children}
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 min-h-screen bg-[#f1f5f9]">
+              {children}
+            </div>
+          )}
+        </Providers>
       </body>
     </html>
   );
