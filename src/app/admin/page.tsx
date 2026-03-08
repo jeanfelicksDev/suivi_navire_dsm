@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Users, CheckCircle, XCircle, ArrowLeft, Trash2 } from "lucide-react";
+import { Users, CheckCircle, XCircle, ArrowLeft, Trash2, Key, Copy } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminUsersPage() {
@@ -79,6 +79,25 @@ export default function AdminUsersPage() {
             } else {
                 const data = await res.json();
                 alert(data.error || "Erreur lors de la suppression");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Erreur réseau");
+        }
+    };
+
+    const manualResetPassword = async (userId: string) => {
+        try {
+            const res = await fetch(`/api/admin/users/${userId}/reset-password`, {
+                method: "POST",
+            });
+            const data = await res.json();
+            if (res.ok) {
+                const url = data.url;
+                await navigator.clipboard.writeText(url);
+                alert("Lien de réinitialisation généré et COPÍÉ dans votre presse-papier :\n\n" + url + "\n\nEnvoyez-le manuellement à l'utilisateur.");
+            } else {
+                alert(data.error || "Erreur lors de la génération du lien");
             }
         } catch (err) {
             console.error(err);
@@ -188,6 +207,13 @@ export default function AdminUsersPage() {
                                                 title="Supprimer le compte"
                                             >
                                                 <Trash2 className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => manualResetPassword(user.id)}
+                                                className="p-1.5 text-blue-500 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors border border-transparent hover:border-blue-200"
+                                                title="Générer lien réinitialisation"
+                                            >
+                                                <Key className="w-4 h-4" />
                                             </button>
                                         </div>
                                     )}
