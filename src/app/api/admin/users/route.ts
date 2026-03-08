@@ -20,6 +20,10 @@ export async function GET() {
                 service: true,
                 isApproved: true,
                 createdAt: true,
+                canCreateNavire: true,
+                canCreateVoyage: true,
+                canCreateArmateur: true,
+                canCreateAction: true,
             },
             orderBy: { createdAt: "desc" },
         });

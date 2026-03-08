@@ -51,6 +51,13 @@ model User {
   profil        Role         @default(USER)
   service       String       // This will store the name of the Armateur or "Toutes" for Admin
   isApproved    Boolean      @default(false) // For admin approval
+  
+  // Permissions
+  canCreateNavire   Boolean  @default(false)
+  canCreateVoyage   Boolean  @default(false)
+  canCreateArmateur Boolean  @default(false)
+  canCreateAction   Boolean  @default(false)
+
   traitements   Traitement[]
   resetTokens   ResetToken[]
   createdAt     DateTime     @default(now())

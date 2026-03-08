@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Users, CheckCircle, XCircle } from "lucide-react";
+import { Users, CheckCircle, XCircle, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 export default function AdminUsersPage() {
     const { data: session, status } = useSession();
@@ -51,6 +52,21 @@ export default function AdminUsersPage() {
         }
     };
 
+    const togglePermission = async (userId: string, permission: string, value: boolean) => {
+        // Optimistic update
+        setUsers(users.map(u => u.id === userId ? { ...u, [permission]: value } : u));
+        try {
+            await fetch(`/api/admin/users/${userId}/permissions`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ [permission]: value }),
+            });
+        } catch (err) {
+            console.error(err);
+            fetchUsers(); // Revert on error
+        }
+    };
+
     if (loading || status === "loading") {
         return <div className="p-8">Chargement...</div>;
     }
@@ -67,6 +83,12 @@ export default function AdminUsersPage() {
                     </div>
                     <p className="text-slate-500 text-sm font-medium ml-5">Gérez les accès et les comptes</p>
                 </div>
+                <Link href="/">
+                    <button className="flex items-center gap-2 text-slate-600 bg-white border border-slate-200 shadow-sm font-semibold text-sm rounded-xl px-5 py-2.5 transition-all hover:bg-slate-50 hover:text-slate-800">
+                        <ArrowLeft className="w-4 h-4" />
+                        Retour aux Navires
+                    </button>
+                </Link>
             </header>
 
             <div className="bg-white rounded-[1.75rem] shadow-sm border border-slate-200/80 overflow-hidden">
@@ -77,6 +99,7 @@ export default function AdminUsersPage() {
                             <th className="px-6 py-4">Profil</th>
                             <th className="px-6 py-4">Service</th>
                             <th className="px-6 py-4">Date création</th>
+                            <th className="px-6 py-4">Droits</th>
                             <th className="px-6 py-4 text-center">Accès (Approuvé)</th>
                             <th className="px-6 py-4 text-right">Actions</th>
                         </tr>
@@ -92,6 +115,30 @@ export default function AdminUsersPage() {
                                 </td>
                                 <td className="px-6 py-4">{user.service}</td>
                                 <td className="px-6 py-4">{new Date(user.createdAt).toLocaleDateString()}</td>
+                                <td className="px-6 py-4">
+                                    {user.profil === 'ADMIN' ? (
+                                        <span className="text-xs font-bold text-slate-400">Tous les droits</span>
+                                    ) : (
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-purple-600 transition-colors">
+                                                <input type="checkbox" checked={user.canCreateNavire} onChange={(e) => togglePermission(user.id, 'canCreateNavire', e.target.checked)} className="w-3.5 h-3.5 accent-purple-600 rounded border-slate-300 pointer-events-auto" />
+                                                Création Navire
+                                            </label>
+                                            <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-purple-600 transition-colors">
+                                                <input type="checkbox" checked={user.canCreateVoyage} onChange={(e) => togglePermission(user.id, 'canCreateVoyage', e.target.checked)} className="w-3.5 h-3.5 accent-purple-600 rounded border-slate-300 pointer-events-auto" />
+                                                Ajout de Voyage
+                                            </label>
+                                            <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-purple-600 transition-colors">
+                                                <input type="checkbox" checked={user.canCreateArmateur} onChange={(e) => togglePermission(user.id, 'canCreateArmateur', e.target.checked)} className="w-3.5 h-3.5 accent-purple-600 rounded border-slate-300 pointer-events-auto" />
+                                                Ajout d'Armateur
+                                            </label>
+                                            <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-purple-600 transition-colors">
+                                                <input type="checkbox" checked={user.canCreateAction} onChange={(e) => togglePermission(user.id, 'canCreateAction', e.target.checked)} className="w-3.5 h-3.5 accent-purple-600 rounded border-slate-300 pointer-events-auto" />
+                                                Création d'Action
+                                            </label>
+                                        </div>
+                                    )}
+                                </td>
                                 <td className="px-6 py-4 text-center">
                                     {user.isApproved || user.profil === 'ADMIN' ? (
                                         <span className="inline-flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded text-xs font-bold">
