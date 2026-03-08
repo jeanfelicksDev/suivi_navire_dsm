@@ -56,3 +56,28 @@ export const sendTempPasswordToAdmin = async (adminEmails: string[], userEmail: 
     `,
     });
 };
+
+export const sendResetRequestToAdmin = async (adminEmails: string[], userEmail: string) => {
+    const transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_SERVER_HOST,
+        port: Number(process.env.EMAIL_SERVER_PORT) || 587,
+        secure: process.env.EMAIL_SERVER_SECURE === "true",
+        auth: {
+            user: process.env.EMAIL_SERVER_USER,
+            pass: process.env.EMAIL_SERVER_PASSWORD,
+        },
+    });
+
+    await transporter.sendMail({
+        from: `"Suivi Navires DSM" <${process.env.EMAIL_FROM}>`,
+        to: adminEmails.join(", "),
+        subject: "Demande de réinitialisation de mot de passe",
+        html: `
+      <h2>Demande de réinitialisation</h2>
+      <p>L'utilisateur <strong>${userEmail}</strong> a demandé une réinitialisation de son mot de passe.</p>
+      <p>Veuillez vous rendre dans l'espace Administration et cliquer sur la <strong>clé bleue</strong> pour lui générer un nouveau mot de passe temporaire.</p>
+      <br />
+      <p>L'équipe DSM</p>
+    `,
+    });
+};

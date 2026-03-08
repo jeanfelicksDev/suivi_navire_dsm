@@ -93,11 +93,11 @@ export default function AdminUsersPage() {
             });
             const data = await res.json();
             if (res.ok) {
-                const url = data.url;
-                await navigator.clipboard.writeText(url);
-                alert("Lien de réinitialisation généré et COPÍÉ dans votre presse-papier :\n\n" + url + "\n\nEnvoyez-le manuellement à l'utilisateur.");
+                const tempPassword = data.tempPassword;
+                await navigator.clipboard.writeText(tempPassword);
+                alert("Le MOT DE PASSE TEMPORAIRE a été généré et COPIÉ :\n\n" + tempPassword + "\n\nTransmettez ce code manuellement à l'utilisateur. Il devra obligatoirement le changer à sa première connexion.");
             } else {
-                alert(data.error || "Erreur lors de la génération du lien");
+                alert(data.error || "Erreur lors de la génération du mot de passe");
             }
         } catch (err) {
             console.error(err);

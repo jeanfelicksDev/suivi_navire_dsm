@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { hash } from "bcryptjs";
 import prisma from "@/lib/db";
-import { sendTempPasswordToAdmin } from "@/lib/mailer";
+import { sendResetRequestToAdmin } from "@/lib/mailer";
 
 export async function POST(req: Request) {
     try {
@@ -20,20 +19,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "La demande a été transmise à l'administrateur." });
         }
 
-        // 1. Générer un mot de passe temporaire (8 caractères aléatoires)
-        const tempPassword = Math.random().toString(36).slice(-8);
-        const hashedTempPassword = await hash(tempPassword, 12);
-
-        // 2. Mettre à jour l'utilisateur
-        await prisma.user.update({
-            where: { id: user.id },
-            data: {
-                password: hashedTempPassword,
-                needsPasswordChange: true,
-            },
-        });
-
-        // 3. Récupérer tous les administrateurs pour les notifier
+        // 1. Récupérer tous les administrateurs pour les notifier
         const admins = await prisma.user.findMany({
             where: { profil: "ADMIN" },
             select: { email: true },
@@ -48,13 +34,13 @@ export async function POST(req: Request) {
 
         if (adminEmails.length > 0) {
             try {
-                await sendTempPasswordToAdmin(adminEmails, user.email, tempPassword);
+                await sendResetRequestToAdmin(adminEmails, user.email);
             } catch (mailError) {
                 console.error("Erreur lors de l'envoi de l'email aux admins :", mailError);
             }
         }
 
-        return NextResponse.json({ message: "La demande a été transmise à l'administrateur qui vous enverra un mot de passe temporaire." });
+        return NextResponse.json({ message: "La demande a été transmise à l'administrateur qui réinitialisera votre accès." });
     } catch (error: any) {
         console.error("Forgot Password Error:", error);
         return NextResponse.json({ error: "Une erreur est survenue." }, { status: 500 });

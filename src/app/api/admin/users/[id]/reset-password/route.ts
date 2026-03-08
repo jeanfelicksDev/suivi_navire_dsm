@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
-import { v4 as uuidv4 } from "uuid";
+import { hash } from "bcryptjs";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
@@ -21,27 +21,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             return NextResponse.json({ error: "Utilisateur non trouvé" }, { status: 404 });
         }
 
-        // Un token valide 1 heure
-        const token = uuidv4();
-        const expiresAt = new Date(Date.now() + 3600000);
+        // 1. Générer un mot de passe temporaire (8 caractères aléatoires)
+        const tempPassword = Math.random().toString(36).slice(-8);
+        const hashedTempPassword = await hash(tempPassword, 12);
 
-        // Supprimer d'abord les anciens tokens pour ce user
-        await prisma.resetToken.deleteMany({
-            where: { userId: user.id },
-        });
-
-        await prisma.resetToken.create({
+        // 2. Mettre à jour l'utilisateur
+        await prisma.user.update({
+            where: { id: user.id },
             data: {
-                token,
-                userId: user.id,
-                expiresAt,
+                password: hashedTempPassword,
+                needsPasswordChange: true,
             },
         });
 
-        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-        const resetUrl = `${baseUrl}/reset-password?token=${token}`;
-
-        return NextResponse.json({ url: resetUrl });
+        return NextResponse.json({ tempPassword });
     } catch (error: any) {
         console.error("Admin Manual Reset Error:", error);
         return NextResponse.json({ error: "Une erreur est survenue." }, { status: 500 });
