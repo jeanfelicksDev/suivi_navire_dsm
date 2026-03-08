@@ -1085,84 +1085,44 @@ export default function Home() {
                           strategy={verticalListSortingStrategy}
                         >
                           {(() => {
-                            const visibleActions = traitement.actions.filter(a => !hiddenActionIds.has(a.id));
-                            const nbHidden = traitement.actions.filter(a => hiddenActionIds.has(a.id)).length;
+                            // Bucket both visible and hidden actions by group (Commune or Armateur)
+                            const groups: Record<string, { visible: any[], hidden: any[] }> = {};
 
-                            // Grouping actions
-                            const communeActions = visibleActions.filter(a => !a.armateur);
-                            const individualActionsByArmateur: Record<string, any[]> = {};
-                            visibleActions.forEach(a => {
-                              if (a.armateur) {
-                                if (!individualActionsByArmateur[a.armateur]) individualActionsByArmateur[a.armateur] = [];
-                                individualActionsByArmateur[a.armateur].push(a);
+                            traitement.actions.forEach(a => {
+                              const key = a.armateur || "Commune";
+                              if (!groups[key]) groups[key] = { visible: [], hidden: [] };
+                              if (hiddenActionIds.has(a.id)) {
+                                groups[key].hidden.push(a);
+                              } else {
+                                groups[key].visible.push(a);
                               }
                             });
 
-                            return (
-                              <div className="flex flex-col gap-6 w-full">
-                                {/* Actions Communes */}
-                                {communeActions.length > 0 && (
-                                  <div className="space-y-3">
-                                    <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Actions Communes</h5>
-                                    <div className="flex flex-wrap gap-4">
-                                      {communeActions.map(action => (
-                                        <SortableAction
-                                          key={action.id}
-                                          action={action}
-                                          traitementId={traitement.id}
-                                          activeClotureInput={activeClotureInput}
-                                          setActiveClotureInput={setActiveClotureInput}
-                                          actionClotureDates={actionClotureDates}
-                                          setActionClotureDates={setActionClotureDates}
-                                          handleCloseAction={handleCloseAction}
-                                          handleReactivateAction={handleReactivateAction}
-                                          handleDeleteAction={handleDeleteAction}
-                                          toggleHideAction={toggleHideAction}
-                                          deadline={calculateDeadline(action.action, traitement, actionTemplates)}
-                                          isReadOnly={traitement.userId && traitement.userId !== (session?.user as any)?.id}
-                                        />
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Actions Individuelles par Armateur */}
-                                <div className="flex flex-col gap-6">
-                                  {Object.entries(individualActionsByArmateur).map(([armateurName, armateurActions]) => (
-                                    <div key={armateurName} className="space-y-3 border-l-2 border-indigo-100 pl-4 py-1">
-                                      <h5 className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                                        {armateurName}
-                                      </h5>
-                                      <div className="flex flex-wrap gap-4">
-                                        {armateurActions.map(action => (
-                                          <SortableAction
-                                            key={action.id}
-                                            action={action}
-                                            traitementId={traitement.id}
-                                            activeClotureInput={activeClotureInput}
-                                            setActiveClotureInput={setActiveClotureInput}
-                                            actionClotureDates={actionClotureDates}
-                                            setActionClotureDates={setActionClotureDates}
-                                            handleCloseAction={handleCloseAction}
-                                            handleReactivateAction={handleReactivateAction}
-                                            handleDeleteAction={handleDeleteAction}
-                                            toggleHideAction={toggleHideAction}
-                                            deadline={calculateDeadline(action.action, traitement, actionTemplates)}
-                                            isReadOnly={traitement.userId && traitement.userId !== (session?.user as any)?.id}
-                                          />
-                                        ))}
-                                      </div>
-                                    </div>
+                            const renderActionsInGroup = (visible: any[], hidden: any[]) => (
+                              <>
+                                <div className="flex flex-wrap gap-4">
+                                  {visible.map(action => (
+                                    <SortableAction
+                                      key={action.id}
+                                      action={action}
+                                      traitementId={traitement.id}
+                                      activeClotureInput={activeClotureInput}
+                                      setActiveClotureInput={setActiveClotureInput}
+                                      actionClotureDates={actionClotureDates}
+                                      setActionClotureDates={setActionClotureDates}
+                                      handleCloseAction={handleCloseAction}
+                                      handleReactivateAction={handleReactivateAction}
+                                      handleDeleteAction={handleDeleteAction}
+                                      toggleHideAction={toggleHideAction}
+                                      deadline={calculateDeadline(action.action, traitement, actionTemplates)}
+                                      isReadOnly={traitement.userId && traitement.userId !== (session?.user as any)?.id}
+                                    />
                                   ))}
                                 </div>
-
-                                {nbHidden > 0 && (
+                                {hidden.length > 0 && (
                                   <button
                                     onClick={() => {
-                                      const ids = traitement.actions
-                                        .filter(a => hiddenActionIds.has(a.id))
-                                        .map(a => a.id);
+                                      const ids = hidden.map(h => h.id);
                                       setHiddenActionIds(prev => {
                                         const next = new Set(prev);
                                         ids.forEach(id => next.delete(id));
@@ -1170,15 +1130,41 @@ export default function Home() {
                                         return next;
                                       });
                                     }}
-                                    className="mt-2 flex items-center gap-1.5 text-[11px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
+                                    className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
                                   >
                                     <Eye className="w-3.5 h-3.5" />
-                                    {nbHidden} action{nbHidden > 1 ? 's' : ''} masquée{nbHidden > 1 ? 's' : ''}
+                                    {hidden.length} action{hidden.length > 1 ? 's' : ''} masquée{hidden.length > 1 ? 's' : ''}
                                   </button>
                                 )}
+                              </>
+                            );
+
+                            return (
+                              <div className="flex flex-col gap-6 w-full">
+                                {/* Zone Commune */}
+                                {groups["Commune"] && (groups["Commune"].visible.length > 0 || groups["Commune"].hidden.length > 0) && (
+                                  <div className="space-y-3">
+                                    <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Actions Communes</h5>
+                                    {renderActionsInGroup(groups["Commune"].visible, groups["Commune"].hidden)}
+                                  </div>
+                                )}
+
+                                {/* Zones Armateurs */}
+                                {Object.entries(groups)
+                                  .filter(([k]) => k !== "Commune")
+                                  .map(([armateurName, data]) => (
+                                    <div key={armateurName} className="space-y-3 border-l-2 border-indigo-100 pl-4 py-1">
+                                      <h5 className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                        {armateurName}
+                                      </h5>
+                                      {renderActionsInGroup(data.visible, data.hidden)}
+                                    </div>
+                                  ))}
                               </div>
                             );
                           })()}
+
                         </SortableContext>
                       </DndContext>
                     </div>
