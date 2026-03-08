@@ -27,34 +27,41 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
         const selectedArmateurs = (existingTraitement as any).selectedArmateurs || [];
 
-        // Distribute action to all armateurs if any are tracking this suivi
-        if (selectedArmateurs.length > 0) {
+        // Find the template to check if it's a "Commune" or "Individuelle" action
+        const template = await prisma.actionTemplate.findFirst({
+            where: { name: actionName.trim() }
+        });
+
+        const isIndividuelle = template?.type === "Individuelle";
+
+        // If it's an individual action and we have tracked armateurs, duplicate it
+        if (isIndividuelle && selectedArmateurs.length > 0) {
             const results = [];
             for (const armateurName of selectedArmateurs) {
                 const newAction = await prisma.action.create({
                     data: {
                         traitementId: id,
                         action: actionName.trim(),
-                        armateur: armateurName, // Assign to armateur zone
+                        armateur: armateurName, // Specific armateur zone
                         isComplete: false,
                     }
                 });
                 results.push(newAction);
             }
-            // Return one result as confirmation
             return NextResponse.json(results[0]);
         } else {
-            // No armateurs selected (fallback/older data), create a single common action
+            // It's a "Commune" action (or no armateurs selected), add it once to the general zone
             const newAction = await prisma.action.create({
                 data: {
                     traitementId: id,
                     action: actionName.trim(),
-                    armateur: null,
+                    armateur: null, // General "Actions Communes" zone
                     isComplete: false,
                 }
             });
             return NextResponse.json(newAction);
         }
+
 
 
     } catch (error) {
