@@ -867,7 +867,7 @@ export default function Home() {
                 />
 
                 {/* Bouton de suppression global du suivi */}
-                {(isAdmin || !traitement.userId || traitement.userId === (session?.user as any)?.id) && (
+                {(!traitement.userId || traitement.userId === (session?.user as any)?.id) && (
                   <button
                     onClick={() => handleDeleteSuivi(traitement.id)}
                     className="absolute top-3 right-3 w-9 h-9 bg-white border border-red-100 text-red-500 rounded-full flex items-center justify-center hover:bg-red-50 hover:border-red-500 hover:scale-110 transition-all z-20 shadow-sm"
