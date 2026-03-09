@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
     try {
         const templates = await prisma.actionTemplate.findMany({
-            orderBy: { name: 'asc' }
+            orderBy: [{ position: 'asc' }, { name: 'asc' }]
         })
         return NextResponse.json(templates)
     } catch (error) {
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
         }
         const body = await request.json()
-        const { name, isReferentiel, nbreJours, periode, evenementId, joursOuvrable, joursCalendaire, isNotification, type } = body
+        const { name, isReferentiel, nbreJours, periode, evenementId, joursOuvrable, joursCalendaire, isNotification, type, position } = body
         const template = await prisma.actionTemplate.create({
             data: {
                 name: toTitleCase(name),
@@ -40,6 +40,7 @@ export async function POST(request: Request) {
                 joursCalendaire: joursCalendaire ?? false,
                 isNotification: isNotification ?? false,
                 type: type ?? "Commune",
+                position: position ? parseInt(position.toString()) : 0,
             }
         })
 

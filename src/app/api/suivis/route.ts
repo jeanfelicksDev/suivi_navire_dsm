@@ -122,6 +122,7 @@ export async function POST(request: Request) {
             action: template.name,
             armateur: null,
             isComplete: false,
+            position: template.position || 0,
         }));
 
 

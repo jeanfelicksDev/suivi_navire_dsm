@@ -22,7 +22,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     try {
         const { id } = await params
         const body = await request.json()
-        const { name, isReferentiel, nbreJours, periode, evenementId, joursOuvrable, joursCalendaire, isNotification, type } = body
+        const { name, isReferentiel, nbreJours, periode, evenementId, joursOuvrable, joursCalendaire, isNotification, type, position } = body
 
         const updated = await prisma.actionTemplate.update({
             where: { id },
@@ -36,6 +36,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
                 ...(joursCalendaire !== undefined && { joursCalendaire }),
                 ...(isNotification !== undefined && { isNotification }),
                 ...(type !== undefined && { type }),
+                ...(position !== undefined && { position: position ? parseInt(position.toString()) : 0 }),
             }
         })
 

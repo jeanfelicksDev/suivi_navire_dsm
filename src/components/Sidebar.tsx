@@ -39,10 +39,12 @@ export function Sidebar() {
     const [newAction, setNewAction] = useState("");
     const [newActionIsReferentiel, setNewActionIsReferentiel] = useState(false);
     const [newActionType, setNewActionType] = useState("Commune");
+    const [newActionPosition, setNewActionPosition] = useState("");
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editValue, setEditValue] = useState("");
     const [editIsReferentiel, setEditIsReferentiel] = useState(false);
     const [editType, setEditType] = useState("Commune");
+    const [editPosition, setEditPosition] = useState("");
     const [actionSearchQuery, setActionSearchQuery] = useState("");
 
 
@@ -242,12 +244,13 @@ export function Sidebar() {
                 const res = await fetch('/api/action-templates', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: newAction.trim(), isReferentiel: newActionIsReferentiel, type: newActionType })
+                    body: JSON.stringify({ name: newAction.trim(), isReferentiel: newActionIsReferentiel, type: newActionType, position: newActionPosition })
                 });
                 if (res.ok) {
                     setNewAction("");
                     setNewActionIsReferentiel(false);
                     setNewActionType("Commune");
+                    setNewActionPosition("");
                     fetchActions();
                     notifyDataUpdate();
                 } else {
@@ -324,11 +327,12 @@ export function Sidebar() {
         }
     };
 
-    const handleStartEdit = (id: string, currentName: string, isReferentiel: boolean, type: string) => {
+    const handleStartEdit = (id: string, currentName: string, isReferentiel: boolean, type: string, position: number) => {
         setEditingId(id);
         setEditValue(currentName);
         setEditIsReferentiel(isReferentiel || false);
         setEditType(type || "Commune");
+        setEditPosition(position ? String(position) : "0");
     };
 
     const handleSaveEdit = async (id: string) => {
@@ -337,7 +341,7 @@ export function Sidebar() {
                 const res = await fetch(`/api/action-templates/${id}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: editValue.trim(), isReferentiel: editIsReferentiel, type: editType })
+                    body: JSON.stringify({ name: editValue.trim(), isReferentiel: editIsReferentiel, type: editType, position: editPosition })
                 });
                 if (res.ok) {
                     setEditingId(null);
@@ -795,6 +799,14 @@ export function Sidebar() {
                                                 className="flex-1 p-2 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
                                                 placeholder="Nom de l'action... (ex: ACCORD SCANNER)"
                                             />
+                                            <input
+                                                type="number"
+                                                value={newActionPosition}
+                                                onChange={e => setNewActionPosition(e.target.value)}
+                                                className="w-16 p-2 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                                                placeholder="Pos."
+                                                title="Ordre chronologique"
+                                            />
                                             <button
                                                 type="submit"
                                                 disabled={!newAction.trim()}
@@ -846,7 +858,7 @@ export function Sidebar() {
                                     <table className="w-full text-left border-collapse">
                                         <thead className="sticky top-0 z-10">
                                             <tr className="bg-slate-100 border-b border-slate-300 text-[13px]">
-                                                <th className="p-3 font-bold text-slate-700 border-r border-slate-300 w-14 text-center">ID</th>
+                                                <th className="p-3 font-bold text-slate-700 border-r border-slate-300 w-14 text-center">Ordre</th>
                                                 <th className="p-3 font-bold text-slate-700">Nom de l'action</th>
                                                 <th className="p-3 font-bold text-slate-700 text-center w-28 border-l border-slate-300">Type</th>
                                                 <th className="p-3 font-bold text-slate-700 text-center w-28">Opérations</th>
@@ -863,8 +875,17 @@ export function Sidebar() {
                                             ) : (
                                                 actions.filter(a => a.name.toLowerCase().includes(actionSearchQuery.toLowerCase())).map((action, index) => (
                                                     <tr key={action.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                                                        <td className="p-3 border-r border-slate-200 text-slate-500 text-center">
-                                                            {index + 1}
+                                                        <td className="p-3 border-r border-slate-200 text-slate-500 text-center font-bold">
+                                                            {editingId === action.id ? (
+                                                                <input
+                                                                    type="number"
+                                                                    value={editPosition}
+                                                                    onChange={e => setEditPosition(e.target.value)}
+                                                                    className="w-full p-1 border border-emerald-500 rounded text-center focus:outline-none"
+                                                                />
+                                                            ) : (
+                                                                (action as any).position || 0
+                                                            )}
                                                         </td>
                                                         <td className="p-3">
                                                             {editingId === action.id ? (
@@ -999,7 +1020,7 @@ export function Sidebar() {
                                                             {editingId !== action.id && (
                                                                 <div className="flex items-center justify-center gap-3">
                                                                     <button
-                                                                        onClick={() => handleStartEdit(action.id, action.name, action.isReferentiel, action.type)}
+                                                                        onClick={() => handleStartEdit(action.id, action.name, action.isReferentiel, action.type, (action as any).position || 0)}
                                                                         className="text-blue-500 hover:text-blue-700 p-1 hover:bg-blue-50 rounded transition-colors"
                                                                         title="Modifier"
                                                                     >

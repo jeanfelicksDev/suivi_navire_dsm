@@ -216,7 +216,10 @@ function SortableAction({
               <GripVertical className="w-4 h-4" />
             </button>
           )}
-          <span className={`font-bold text-xs ${action.isComplete ? 'text-slate-500 line-through decoration-slate-400' : 'text-blue-900'}`}>{action.action}</span>
+          <div className="flex flex-col">
+            <span className="text-[10px] text-slate-400 font-bold block leading-none mb-0.5">#{action.position || 0}</span>
+            <span className={`font-bold text-xs ${action.isComplete ? 'text-slate-500 line-through decoration-slate-400' : 'text-blue-900'}`}>{action.action}</span>
+          </div>
         </div>
         {!isReadOnly && (
           action.isComplete ? (
@@ -1434,8 +1437,8 @@ export default function Home() {
                             setSelectedTargetsForAction([]);
                           }}
                           className={`w-full text-left px-3 py-2 rounded-lg border transition-all flex justify-between items-center gap-2 ${isAlreadyAdded
-                              ? 'bg-slate-50 border-slate-200 text-slate-500 hover:border-blue-300 hover:bg-blue-50'
-                              : 'bg-white border-slate-300 hover:border-blue-500 hover:shadow-sm text-slate-800'
+                            ? 'bg-slate-50 border-slate-200 text-slate-500 hover:border-blue-300 hover:bg-blue-50'
+                            : 'bg-white border-slate-300 hover:border-blue-500 hover:shadow-sm text-slate-800'
                             }`}
                         >
                           <span className="flex-1">{action.name}</span>
@@ -1523,8 +1526,8 @@ export default function Home() {
                       <label
                         key={arm}
                         className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer group ${alreadyHasThisArm
-                            ? 'border-emerald-200 bg-emerald-50/60'
-                            : 'border-slate-200 hover:border-indigo-400 hover:bg-indigo-50'
+                          ? 'border-emerald-200 bg-emerald-50/60'
+                          : 'border-slate-200 hover:border-indigo-400 hover:bg-indigo-50'
                           }`}
                       >
                         <input

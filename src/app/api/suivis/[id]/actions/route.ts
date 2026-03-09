@@ -78,6 +78,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
                         action: normalizedActionName,
                         armateur: armateurName,
                         isComplete: false,
+                        position: template?.position || 0,
                     }
                 });
                 results.push(newAction);
