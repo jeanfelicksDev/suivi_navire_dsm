@@ -401,6 +401,8 @@ export default function Home() {
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
   const [actionSearchQuery, setActionSearchQuery] = useState("");
   const [selectedTraitementForAction, setSelectedTraitementForAction] = useState<NavireEnTraitement | null>(null);
+  const [actionSelectionStep, setActionSelectionStep] = useState<{ actionName: string } | null>(null);
+  const [selectedTargetsForAction, setSelectedTargetsForAction] = useState<string[]>([]);
   const [actionClotureDates, setActionClotureDates] = useState<Record<string, string>>({});
   const [activeClotureInput, setActiveClotureInput] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -709,27 +711,26 @@ export default function Home() {
   const openActionModal = (traitement: NavireEnTraitement) => {
     setSelectedTraitementForAction(traitement);
     setActionSearchQuery("");
+    setActionSelectionStep(null);
+    setSelectedTargetsForAction([]);
     setIsActionModalOpen(true);
   };
 
-  const handleAddActionToNavire = async (actionName: string) => {
-    if (!selectedTraitementForAction) return;
-
-    // Check if the action is already added
-    if (selectedTraitementForAction.actions.some(a => a.action === actionName)) {
-      return; // Already added
-    }
+  const handleConfirmAddAction = async () => {
+    if (!selectedTraitementForAction || !actionSelectionStep) return;
 
     try {
       const res = await fetch(`/api/suivis/${selectedTraitementForAction.id}/actions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: actionName })
+        body: JSON.stringify({ action: actionSelectionStep.actionName, targets: selectedTargetsForAction })
       });
 
       if (res.ok) {
         fetchSuivis();
         window.dispatchEvent(new Event('globalDataUpdate'));
+        setActionSelectionStep(null);
+        setSelectedTargetsForAction([]);
       }
     } catch (error) {
       console.error('Failed to add action:', error);
@@ -1406,54 +1407,110 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div>
-                  <h4 className="font-bold text-slate-800 mb-3">Sélectionnez les actions à ajouter :</h4>
-                  <div className="relative mb-4">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                    <input
-                      type="text"
-                      placeholder="Rechercher une action..."
-                      value={actionSearchQuery}
-                      onChange={(e) => setActionSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                    {actionTemplates.filter(a => a.name.toLowerCase().includes(actionSearchQuery.toLowerCase())).map(action => {
-                      const isAlreadyAdded = naviresEnTraitement
-                        .find(t => t.id === selectedTraitementForAction?.id)
-                        ?.actions.some(a => a.action === action.name);
+                {actionSelectionStep ? (
+                  <div className="animate-fade-in text-sm">
+                    <h4 className="font-bold text-slate-800 mb-3">
+                      Pour qui souhaitez-vous ajouter l'action : <span className="text-blue-600">{actionSelectionStep.actionName}</span> ?
+                    </h4>
+                    <div className="space-y-3 px-1 mb-6">
+                      <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={selectedTargetsForAction.includes("TOUS")}
+                          onChange={e => {
+                            if (e.target.checked) setSelectedTargetsForAction(["TOUS"]);
+                            else setSelectedTargetsForAction([]);
+                          }}
+                          className="w-5 h-5 accent-blue-600"
+                        />
+                        <div className="flex-1 font-bold text-slate-700 group-hover:text-blue-900">Pour tous</div>
+                      </label>
 
-                      return (
-                        <button
-                          key={action.id}
-                          disabled={isAlreadyAdded}
-                          onClick={() => handleAddActionToNavire(action.name)}
-                          className={`w-full text-left px-3 py-2 rounded-lg border transition-all flex justify-between items-center ${isAlreadyAdded
-                            ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
-                            : 'bg-white border-slate-300 hover:border-blue-500 hover:shadow-sm text-slate-800'
-                            }`}
-                        >
-                          <span>{action.name}</span>
-                          {isAlreadyAdded ? (
-                            <span className="text-xs font-bold px-2 py-1 bg-slate-200 rounded text-slate-500">Ajoutée</span>
-                          ) : (
-                            <Plus className="w-4 h-4 text-blue-500" />
-                          )}
-                        </button>
-                      );
-                    })}
+                      {selectedTraitementForAction?.selectedArmateurs?.filter(Boolean).map(arm => (
+                        <label key={arm} className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={selectedTargetsForAction.includes(arm)}
+                            onChange={e => {
+                              if (e.target.checked) setSelectedTargetsForAction(prev => prev.filter(x => x !== "TOUS").concat(arm));
+                              else setSelectedTargetsForAction(prev => prev.filter(x => x !== arm));
+                            }}
+                            className="w-5 h-5 accent-blue-600"
+                          />
+                          <div className="flex-1 font-bold text-slate-700 group-hover:text-blue-900">{arm}</div>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-5">
+                      <button
+                        onClick={() => setActionSelectionStep(null)}
+                        className="px-6 py-2 bg-slate-200 text-slate-800 hover:bg-slate-300 rounded font-bold transition"
+                      >
+                        Retour
+                      </button>
+                      <button
+                        onClick={() => handleConfirmAddAction()}
+                        disabled={selectedTargetsForAction.length === 0}
+                        className="px-6 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded font-bold transition disabled:opacity-50"
+                      >
+                        Confirmer l'ajout
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <div>
+                      <h4 className="font-bold text-slate-800 mb-3">Sélectionnez les actions à ajouter :</h4>
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                        <input
+                          type="text"
+                          placeholder="Rechercher une action..."
+                          value={actionSearchQuery}
+                          onChange={(e) => setActionSearchQuery(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                        {actionTemplates.filter(a => a.name.toLowerCase().includes(actionSearchQuery.toLowerCase())).map(action => {
+                          const isAlreadyAdded = naviresEnTraitement
+                            .find(t => t.id === selectedTraitementForAction?.id)
+                            ?.actions.some(a => a.action === action.name);
 
-                <div className="flex justify-end pt-4 border-t border-slate-100">
-                  <button
-                    onClick={() => setIsActionModalOpen(false)}
-                    className="px-6 py-2 bg-slate-200 text-slate-800 hover:bg-slate-300 rounded font-bold transition"
-                  >
-                    Terminer
-                  </button>
-                </div>
+                          return (
+                            <button
+                              key={action.id}
+                              onClick={() => {
+                                setActionSelectionStep({ actionName: action.name });
+                                setSelectedTargetsForAction([]);
+                              }}
+                              className={`w-full text-left px-3 py-2 rounded-lg border transition-all flex justify-between items-center ${isAlreadyAdded
+                                ? 'bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300'
+                                : 'bg-white border-slate-300 hover:border-blue-500 hover:shadow-sm text-slate-800'
+                                }`}
+                            >
+                              <span>{action.name}</span>
+                              {isAlreadyAdded ? (
+                                <span className="text-xs font-bold px-2 py-1 bg-slate-200 rounded text-slate-500 hover:text-slate-700">Déjà ajoutée (en partie ou totalement) <Plus className="w-4 h-4 text-slate-500 inline ml-1" /></span>
+                              ) : (
+                                <Plus className="w-4 h-4 text-blue-500" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-4 border-t border-slate-100">
+                      <button
+                        onClick={() => setIsActionModalOpen(false)}
+                        className="px-6 py-2 bg-slate-200 text-slate-800 hover:bg-slate-300 rounded font-bold transition"
+                      >
+                        Terminer
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

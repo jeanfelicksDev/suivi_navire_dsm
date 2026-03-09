@@ -12,7 +12,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
         const { id } = await params
         const body = await request.json()
-        const { action: actionName } = body
+        const { action: actionName, targets } = body
 
         const existingTraitement = await prisma.traitement.findUnique({
             where: { id }
@@ -38,59 +38,53 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             }
         });
 
-        const isIndividuelle = template?.type === "Individuelle";
+        // Determine which armateurs to apply to
+        let armateursToApply: (string | null)[] = [];
 
-        // If it's an individual action and we have tracked armateurs, duplicate it
-        if (isIndividuelle && selectedArmateurs.length > 0) {
-            const results = [];
-            for (const armateurName of selectedArmateurs) {
-                // Check if this action already exists for THIS armateur (to avoid duplicates from multiple clicks)
-                const existingActionForArmateur = await prisma.action.findFirst({
-                    where: {
-                        traitementId: id,
-                        action: normalizedActionName,
-                        armateur: armateurName
-                    }
-                });
-
-                if (!existingActionForArmateur) {
-                    const newAction = await prisma.action.create({
-                        data: {
-                            traitementId: id,
-                            action: normalizedActionName,
-                            armateur: armateurName,
-                            isComplete: false,
-                        }
-                    });
-                    results.push(newAction);
-                }
+        if (targets && targets.includes("TOUS")) {
+            if (template?.type === "Commune") {
+                armateursToApply = [null];
+            } else if (selectedArmateurs.length > 0) {
+                armateursToApply = selectedArmateurs;
+            } else {
+                armateursToApply = [null];
             }
-            return NextResponse.json(results[0] || { status: "already_exists" });
+        } else if (targets && targets.length > 0) {
+            armateursToApply = targets;
         } else {
-            // It's a "Commune" action (or no armateurs selected)
-            // Check if it already exists as commune
-            const existingCommuneAction = await prisma.action.findFirst({
+            // Fallback
+            const isIndividuelle = template?.type === "Individuelle";
+            if (isIndividuelle && selectedArmateurs.length > 0) {
+                armateursToApply = selectedArmateurs;
+            } else {
+                armateursToApply = [null];
+            }
+        }
+
+        const results = [];
+        for (const armateurName of armateursToApply) {
+            const existingAction = await prisma.action.findFirst({
                 where: {
                     traitementId: id,
                     action: normalizedActionName,
-                    armateur: null
+                    armateur: armateurName
                 }
             });
 
-            if (existingCommuneAction) {
-                return NextResponse.json(existingCommuneAction);
+            if (!existingAction) {
+                const newAction = await prisma.action.create({
+                    data: {
+                        traitementId: id,
+                        action: normalizedActionName,
+                        armateur: armateurName,
+                        isComplete: false,
+                    }
+                });
+                results.push(newAction);
             }
-
-            const newAction = await prisma.action.create({
-                data: {
-                    traitementId: id,
-                    action: normalizedActionName,
-                    armateur: null,
-                    isComplete: false,
-                }
-            });
-            return NextResponse.json(newAction);
         }
+
+        return NextResponse.json(results.length > 0 ? results[0] : { status: "already_exists" });
 
 
 
