@@ -1407,110 +1407,164 @@ export default function Home() {
                   </div>
                 </div>
 
-                {actionSelectionStep ? (
-                  <div className="animate-fade-in text-sm">
-                    <h4 className="font-bold text-slate-800 mb-3">
-                      Pour qui souhaitez-vous ajouter l'action : <span className="text-blue-600">{actionSelectionStep.actionName}</span> ?
-                    </h4>
-                    <div className="space-y-3 px-1 mb-6">
-                      <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all cursor-pointer group">
+                <div>
+                  <h4 className="font-bold text-slate-800 mb-3">Sélectionnez les actions à ajouter :</h4>
+                  <div className="relative mb-4">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                    <input
+                      type="text"
+                      placeholder="Rechercher une action..."
+                      value={actionSearchQuery}
+                      onChange={(e) => setActionSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2 max-h-72 overflow-y-auto pr-2">
+                    {actionTemplates.filter(a => a.name.toLowerCase().includes(actionSearchQuery.toLowerCase())).map(action => {
+                      const existingActions = naviresEnTraitement
+                        .find(t => t.id === selectedTraitementForAction?.id)
+                        ?.actions.filter(a => a.action === action.name) || [];
+                      const isAlreadyAdded = existingActions.length > 0;
+
+                      return (
+                        <button
+                          key={action.id}
+                          onClick={() => {
+                            setActionSelectionStep({ actionName: action.name });
+                            setSelectedTargetsForAction([]);
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-lg border transition-all flex justify-between items-center gap-2 ${isAlreadyAdded
+                              ? 'bg-slate-50 border-slate-200 text-slate-500 hover:border-blue-300 hover:bg-blue-50'
+                              : 'bg-white border-slate-300 hover:border-blue-500 hover:shadow-sm text-slate-800'
+                            }`}
+                        >
+                          <span className="flex-1">{action.name}</span>
+                          {isAlreadyAdded ? (
+                            <span className="flex items-center gap-1 text-xs font-bold px-2 py-1 bg-emerald-50 border border-emerald-200 rounded text-emerald-700 whitespace-nowrap shrink-0">
+                              Ajoutée · Ajouter encore
+                              <Plus className="w-3.5 h-3.5" />
+                            </span>
+                          ) : (
+                            <Plus className="w-4 h-4 text-blue-500 shrink-0" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-4 border-t border-slate-100">
+                  <button
+                    onClick={() => setIsActionModalOpen(false)}
+                    className="px-6 py-2 bg-slate-200 text-slate-800 hover:bg-slate-300 rounded font-bold transition"
+                  >
+                    Terminer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Boîte de dialogue secondaire : Sélection de la cible (s'affiche par-dessus le modal principal) */}
+      {
+        actionSelectionStep && selectedTraitementForAction && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] animate-fade-in text-sm">
+            <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-blue-200 overflow-hidden">
+              <div className="flex justify-between items-center p-4 border-b border-slate-200 bg-blue-50">
+                <h3 className="font-bold text-blue-900 text-base">Pour qui ajouter l'action ?</h3>
+                <button
+                  onClick={() => setActionSelectionStep(null)}
+                  className="p-1.5 hover:bg-blue-100 rounded-full transition-colors text-blue-700"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Action</span>
+                  <span className="font-bold text-slate-800">{actionSelectionStep.actionName}</span>
+                </div>
+
+                <div className="space-y-2">
+                  {/* Option Tous */}
+                  <label className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={selectedTargetsForAction.includes("TOUS")}
+                      onChange={e => {
+                        if (e.target.checked) setSelectedTargetsForAction(["TOUS"]);
+                        else setSelectedTargetsForAction([]);
+                      }}
+                      className="w-5 h-5 accent-blue-600"
+                    />
+                    <div className="flex-1">
+                      <span className="font-bold text-slate-700 group-hover:text-blue-900 block">Pour tous</span>
+                      <span className="text-[10px] text-slate-400">Ajouter pour l'ensemble des armateurs du voyage</span>
+                    </div>
+                  </label>
+
+                  {/* Séparateur */}
+                  {(selectedTraitementForAction?.selectedArmateurs?.filter(Boolean) || []).length > 0 && (
+                    <div className="flex items-center gap-2 my-1">
+                      <div className="flex-1 h-px bg-slate-200"></div>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">ou individuellement</span>
+                      <div className="flex-1 h-px bg-slate-200"></div>
+                    </div>
+                  )}
+
+                  {/* Options individuelles : Coque + Slotteurs */}
+                  {(selectedTraitementForAction?.selectedArmateurs?.filter(Boolean) || []).map(arm => {
+                    const alreadyHasThisArm = naviresEnTraitement
+                      .find(t => t.id === selectedTraitementForAction?.id)
+                      ?.actions.some(a => a.action === actionSelectionStep.actionName && a.armateur === arm);
+                    return (
+                      <label
+                        key={arm}
+                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer group ${alreadyHasThisArm
+                            ? 'border-emerald-200 bg-emerald-50/60'
+                            : 'border-slate-200 hover:border-indigo-400 hover:bg-indigo-50'
+                          }`}
+                      >
                         <input
                           type="checkbox"
-                          checked={selectedTargetsForAction.includes("TOUS")}
+                          checked={selectedTargetsForAction.includes(arm)}
                           onChange={e => {
-                            if (e.target.checked) setSelectedTargetsForAction(["TOUS"]);
-                            else setSelectedTargetsForAction([]);
+                            if (e.target.checked) {
+                              setSelectedTargetsForAction(prev => prev.filter(x => x !== "TOUS").concat(arm));
+                            } else {
+                              setSelectedTargetsForAction(prev => prev.filter(x => x !== arm));
+                            }
                           }}
-                          className="w-5 h-5 accent-blue-600"
+                          className="w-5 h-5 accent-indigo-600"
                         />
-                        <div className="flex-1 font-bold text-slate-700 group-hover:text-blue-900">Pour tous</div>
+                        <div className="flex-1">
+                          <span className={`font-bold block ${alreadyHasThisArm ? 'text-emerald-700' : 'text-slate-700 group-hover:text-indigo-900'}`}>{arm}</span>
+                          {alreadyHasThisArm && (
+                            <span className="text-[10px] text-emerald-600 font-semibold">✓ Déjà ajoutée</span>
+                          )}
+                        </div>
                       </label>
+                    );
+                  })}
+                </div>
 
-                      {selectedTraitementForAction?.selectedArmateurs?.filter(Boolean).map(arm => (
-                        <label key={arm} className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all cursor-pointer group">
-                          <input
-                            type="checkbox"
-                            checked={selectedTargetsForAction.includes(arm)}
-                            onChange={e => {
-                              if (e.target.checked) setSelectedTargetsForAction(prev => prev.filter(x => x !== "TOUS").concat(arm));
-                              else setSelectedTargetsForAction(prev => prev.filter(x => x !== arm));
-                            }}
-                            className="w-5 h-5 accent-blue-600"
-                          />
-                          <div className="flex-1 font-bold text-slate-700 group-hover:text-blue-900">{arm}</div>
-                        </label>
-                      ))}
-                    </div>
-                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-5">
-                      <button
-                        onClick={() => setActionSelectionStep(null)}
-                        className="px-6 py-2 bg-slate-200 text-slate-800 hover:bg-slate-300 rounded font-bold transition"
-                      >
-                        Retour
-                      </button>
-                      <button
-                        onClick={() => handleConfirmAddAction()}
-                        disabled={selectedTargetsForAction.length === 0}
-                        className="px-6 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded font-bold transition disabled:opacity-50"
-                      >
-                        Confirmer l'ajout
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div>
-                      <h4 className="font-bold text-slate-800 mb-3">Sélectionnez les actions à ajouter :</h4>
-                      <div className="relative mb-4">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                        <input
-                          type="text"
-                          placeholder="Rechercher une action..."
-                          value={actionSearchQuery}
-                          onChange={(e) => setActionSearchQuery(e.target.value)}
-                          className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        />
-                      </div>
-                      <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                        {actionTemplates.filter(a => a.name.toLowerCase().includes(actionSearchQuery.toLowerCase())).map(action => {
-                          const isAlreadyAdded = naviresEnTraitement
-                            .find(t => t.id === selectedTraitementForAction?.id)
-                            ?.actions.some(a => a.action === action.name);
-
-                          return (
-                            <button
-                              key={action.id}
-                              onClick={() => {
-                                setActionSelectionStep({ actionName: action.name });
-                                setSelectedTargetsForAction([]);
-                              }}
-                              className={`w-full text-left px-3 py-2 rounded-lg border transition-all flex justify-between items-center ${isAlreadyAdded
-                                ? 'bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300'
-                                : 'bg-white border-slate-300 hover:border-blue-500 hover:shadow-sm text-slate-800'
-                                }`}
-                            >
-                              <span>{action.name}</span>
-                              {isAlreadyAdded ? (
-                                <span className="text-xs font-bold px-2 py-1 bg-slate-200 rounded text-slate-500 hover:text-slate-700">Déjà ajoutée (en partie ou totalement) <Plus className="w-4 h-4 text-slate-500 inline ml-1" /></span>
-                              ) : (
-                                <Plus className="w-4 h-4 text-blue-500" />
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end pt-4 border-t border-slate-100">
-                      <button
-                        onClick={() => setIsActionModalOpen(false)}
-                        className="px-6 py-2 bg-slate-200 text-slate-800 hover:bg-slate-300 rounded font-bold transition"
-                      >
-                        Terminer
-                      </button>
-                    </div>
-                  </>
-                )}
+                <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                  <button
+                    onClick={() => setActionSelectionStep(null)}
+                    className="px-5 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl font-bold transition"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={() => handleConfirmAddAction()}
+                    disabled={selectedTargetsForAction.length === 0}
+                    className="px-5 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-xl font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Confirmer
+                  </button>
+                </div>
               </div>
             </div>
           </div>
