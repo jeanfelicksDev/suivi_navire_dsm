@@ -1101,15 +1101,17 @@ export default function Home() {
                               });
                             }
 
-                            traitement.actions.forEach(a => {
-                              const key = a.armateur || "Commune";
-                              if (!groups[key]) groups[key] = { visible: [], hidden: [] };
-                              if (hiddenActionIds.has(a.id)) {
-                                groups[key].hidden.push(a);
-                              } else {
-                                groups[key].visible.push(a);
-                              }
-                            });
+                            [...traitement.actions]
+                              .sort((a, b) => (a.position || 0) - (b.position || 0))
+                              .forEach(a => {
+                                const key = a.armateur || "Commune";
+                                if (!groups[key]) groups[key] = { visible: [], hidden: [] };
+                                if (hiddenActionIds.has(a.id)) {
+                                  groups[key].hidden.push(a);
+                                } else {
+                                  groups[key].visible.push(a);
+                                }
+                              });
 
 
                             const renderActionsInGroup = (visible: any[], hidden: any[]) => (
