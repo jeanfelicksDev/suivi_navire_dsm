@@ -178,7 +178,8 @@ function SortableAction({
   handleDeleteAction,
   toggleHideAction,
   deadline,
-  isReadOnly
+  isReadOnly,
+  displayIndex
 }: any) {
   const {
     attributes,
@@ -217,7 +218,7 @@ function SortableAction({
             </button>
           )}
           <div className="flex flex-col">
-            <span className="text-[10px] text-slate-400 font-bold block leading-none mb-0.5">#{action.position || 0}</span>
+            <span className="text-[10px] text-slate-400 font-bold block leading-none mb-0.5">#{displayIndex}</span>
             <span className={`font-bold text-xs ${action.isComplete ? 'text-slate-500 line-through decoration-slate-400' : 'text-blue-900'}`}>{action.action}</span>
           </div>
         </div>
@@ -1089,6 +1090,7 @@ export default function Home() {
                           strategy={verticalListSortingStrategy}
                         >
                           {(() => {
+                            let displayIndexCounter = 0;
                             // Bucket both visible and hidden actions by group (Commune or Armateur)
                             const groups: Record<string, { visible: any[], hidden: any[] }> = {
                               "Commune": { visible: [], hidden: [] }
@@ -1117,23 +1119,27 @@ export default function Home() {
                             const renderActionsInGroup = (visible: any[], hidden: any[]) => (
                               <>
                                 <div className="flex flex-wrap gap-4">
-                                  {visible.map(action => (
-                                    <SortableAction
-                                      key={action.id}
-                                      action={action}
-                                      traitementId={traitement.id}
-                                      activeClotureInput={activeClotureInput}
-                                      setActiveClotureInput={setActiveClotureInput}
-                                      actionClotureDates={actionClotureDates}
-                                      setActionClotureDates={setActionClotureDates}
-                                      handleCloseAction={handleCloseAction}
-                                      handleReactivateAction={handleReactivateAction}
-                                      handleDeleteAction={handleDeleteAction}
-                                      toggleHideAction={toggleHideAction}
-                                      deadline={calculateDeadline(action.action, traitement, actionTemplates)}
-                                      isReadOnly={traitement.userId && traitement.userId !== (session?.user as any)?.id}
-                                    />
-                                  ))}
+                                  {visible.map(action => {
+                                    displayIndexCounter++;
+                                    return (
+                                      <SortableAction
+                                        key={action.id}
+                                        action={action}
+                                        traitementId={traitement.id}
+                                        activeClotureInput={activeClotureInput}
+                                        setActiveClotureInput={setActiveClotureInput}
+                                        actionClotureDates={actionClotureDates}
+                                        setActionClotureDates={setActionClotureDates}
+                                        handleCloseAction={handleCloseAction}
+                                        handleReactivateAction={handleReactivateAction}
+                                        handleDeleteAction={handleDeleteAction}
+                                        toggleHideAction={toggleHideAction}
+                                        deadline={calculateDeadline(action.action, traitement, actionTemplates)}
+                                        isReadOnly={traitement.userId && traitement.userId !== (session?.user as any)?.id}
+                                        displayIndex={displayIndexCounter}
+                                      />
+                                    );
+                                  })}
                                 </div>
                                 {hidden.length > 0 && (
                                   <button
