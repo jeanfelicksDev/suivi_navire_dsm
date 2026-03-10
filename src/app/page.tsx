@@ -1090,7 +1090,6 @@ export default function Home() {
                           strategy={verticalListSortingStrategy}
                         >
                           {(() => {
-                            let displayIndexCounter = 0;
                             // Bucket both visible and hidden actions by group (Commune or Armateur)
                             const groups: Record<string, { visible: any[], hidden: any[] }> = {
                               "Commune": { visible: [], hidden: [] }
@@ -1116,50 +1115,53 @@ export default function Home() {
                               });
 
 
-                            const renderActionsInGroup = (visible: any[], hidden: any[]) => (
-                              <>
-                                <div className="flex flex-wrap gap-4">
-                                  {visible.map(action => {
-                                    displayIndexCounter++;
-                                    return (
-                                      <SortableAction
-                                        key={action.id}
-                                        action={action}
-                                        traitementId={traitement.id}
-                                        activeClotureInput={activeClotureInput}
-                                        setActiveClotureInput={setActiveClotureInput}
-                                        actionClotureDates={actionClotureDates}
-                                        setActionClotureDates={setActionClotureDates}
-                                        handleCloseAction={handleCloseAction}
-                                        handleReactivateAction={handleReactivateAction}
-                                        handleDeleteAction={handleDeleteAction}
-                                        toggleHideAction={toggleHideAction}
-                                        deadline={calculateDeadline(action.action, traitement, actionTemplates)}
-                                        isReadOnly={traitement.userId && traitement.userId !== (session?.user as any)?.id}
-                                        displayIndex={displayIndexCounter}
-                                      />
-                                    );
-                                  })}
-                                </div>
-                                {hidden.length > 0 && (
-                                  <button
-                                    onClick={() => {
-                                      const ids = hidden.map(h => h.id);
-                                      setHiddenActionIds(prev => {
-                                        const next = new Set(prev);
-                                        ids.forEach(id => next.delete(id));
-                                        localStorage.setItem('hiddenActionIds', JSON.stringify(Array.from(next)));
-                                        return next;
-                                      });
-                                    }}
-                                    className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
-                                  >
-                                    <Eye className="w-3.5 h-3.5" />
-                                    {hidden.length} action{hidden.length > 1 ? 's' : ''} masquée{hidden.length > 1 ? 's' : ''}
-                                  </button>
-                                )}
-                              </>
-                            );
+                            const renderActionsInGroup = (visible: any[], hidden: any[]) => {
+                              let displayIndexCounter = 0;
+                              return (
+                                <>
+                                  <div className="flex flex-wrap gap-4">
+                                    {visible.map(action => {
+                                      displayIndexCounter++;
+                                      return (
+                                        <SortableAction
+                                          key={action.id}
+                                          action={action}
+                                          traitementId={traitement.id}
+                                          activeClotureInput={activeClotureInput}
+                                          setActiveClotureInput={setActiveClotureInput}
+                                          actionClotureDates={actionClotureDates}
+                                          setActionClotureDates={setActionClotureDates}
+                                          handleCloseAction={handleCloseAction}
+                                          handleReactivateAction={handleReactivateAction}
+                                          handleDeleteAction={handleDeleteAction}
+                                          toggleHideAction={toggleHideAction}
+                                          deadline={calculateDeadline(action.action, traitement, actionTemplates)}
+                                          isReadOnly={traitement.userId && traitement.userId !== (session?.user as any)?.id}
+                                          displayIndex={displayIndexCounter}
+                                        />
+                                      );
+                                    })}
+                                  </div>
+                                  {hidden.length > 0 && (
+                                    <button
+                                      onClick={() => {
+                                        const ids = hidden.map(h => h.id);
+                                        setHiddenActionIds(prev => {
+                                          const next = new Set(prev);
+                                          ids.forEach(id => next.delete(id));
+                                          localStorage.setItem('hiddenActionIds', JSON.stringify(Array.from(next)));
+                                          return next;
+                                        });
+                                      }}
+                                      className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                      {hidden.length} action{hidden.length > 1 ? 's' : ''} masquée{hidden.length > 1 ? 's' : ''}
+                                    </button>
+                                  )}
+                                </>
+                              );
+                            };
 
                             return (
                               <div className="flex flex-col gap-6 w-full">
@@ -1584,3 +1586,4 @@ export default function Home() {
     </main >
   );
 }
+#
