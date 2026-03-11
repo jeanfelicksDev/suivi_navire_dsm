@@ -41,10 +41,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         // Determine which armateurs to apply to
         let armateursToApply: (string | null)[] = [];
 
-        if (targets && targets.includes("TOUS")) {
-            if (template?.type === "Commune") {
-                armateursToApply = [null];
-            } else if (selectedArmateurs.length > 0) {
+        if (template?.type === "Commune") {
+            armateursToApply = [null];
+        } else if (targets && targets.includes("TOUS")) {
+            if (selectedArmateurs.length > 0) {
                 armateursToApply = selectedArmateurs;
             } else {
                 armateursToApply = [null];

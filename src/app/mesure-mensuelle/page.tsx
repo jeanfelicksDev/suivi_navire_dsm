@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Calendar, Download, RefreshCw, Ship, AlertCircle, ArrowLeft } from "lucide-react";
@@ -43,6 +43,122 @@ const formatDate = (dateStr: string) => {
     return `${d}/${m}/${y}`;
 };
 
+const isHolidayCI = (date: Date) => {
+  const d = date.getDate();
+  const m = date.getMonth() + 1;
+  const y = date.getFullYear();
+
+  if (d === 1 && m === 1) return true; 
+  if (d === 1 && m === 5) return true; 
+  if (d === 7 && m === 8) return true; 
+  if (d === 15 && m === 8) return true; 
+  if (d === 1 && m === 11) return true; 
+  if (d === 15 && m === 11) return true; 
+  if (d === 25 && m === 12) return true; 
+
+  const a = y % 19;
+  const b = Math.floor(y / 100);
+  const c = y % 100;
+  const d_div = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d_div - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const p = Math.floor((a + 11 * h + 22 * l) / 451);
+  const monthPaques = Math.floor((h + l - 7 * p + 114) / 31);
+  const dayPaques = ((h + l - 7 * p + 114) % 31) + 1;
+  const datePaques = new Date(y, monthPaques - 1, dayPaques);
+
+  const lundiPaques = new Date(datePaques); lundiPaques.setDate(datePaques.getDate() + 1);
+  if (d === lundiPaques.getDate() && m === lundiPaques.getMonth() + 1) return true;
+
+  const ascension = new Date(datePaques); ascension.setDate(datePaques.getDate() + 39);
+  if (d === ascension.getDate() && m === ascension.getMonth() + 1) return true;
+
+  const pentecote = new Date(datePaques); pentecote.setDate(datePaques.getDate() + 50);
+  if (d === pentecote.getDate() && m === pentecote.getMonth() + 1) return true;
+
+  const hier = new Date(date);
+  hier.setDate(hier.getDate() - 1);
+  if (hier.getDay() === 0) {
+    const hd = hier.getDate();
+    const hm = hier.getMonth() + 1;
+    if (
+      (hd === 1 && hm === 1) ||
+      (hd === 1 && hm === 5) ||
+      (hd === 7 && hm === 8) ||
+      (hd === 15 && hm === 8) ||
+      (hd === 1 && hm === 11) ||
+      (hd === 15 && hm === 11) ||
+      (hd === 25 && hm === 12)
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const calculateDeadline = (actionName: string, traitement: any, templates: any[]) => {
+  const template = templates.find((t: any) => t.name === actionName);
+  if (!template || template.nbreJours == null || !template.evenementId) return null;
+
+  let baseDateStr = null;
+
+  if (template.evenementId === 'ETA' || template.evenementId === 'ETD') {
+    if (template.evenementId === 'ETA' && traitement.voyage?.dateETA) {
+      baseDateStr = traitement.voyage.dateETA;
+    } else if (template.evenementId === 'ETD' && traitement.voyage?.dateETD) {
+      baseDateStr = traitement.voyage.dateETD;
+    }
+  } else {
+    const refTemplate = templates.find((t: any) => t.id === template.evenementId);
+    if (!refTemplate) return null;
+
+    const refAction = traitement.actions.find((a: any) => a.action === refTemplate.name);
+
+    if (refAction && refAction.isComplete && refAction.dateCloture) {
+      baseDateStr = refAction.dateCloture;
+    } else {
+      const title = refTemplate.name.toUpperCase();
+      if (title.includes('ETA') && traitement.voyage?.dateETA) {
+        baseDateStr = traitement.voyage.dateETA;
+      } else if (title.includes('ETD') && traitement.voyage?.dateETD) {
+        baseDateStr = traitement.voyage.dateETD;
+      }
+    }
+  }
+
+  if (!baseDateStr) return null;
+
+  const baseDate = new Date(baseDateStr);
+  if (isNaN(baseDate.getTime())) return null;
+
+  const daysToAdd = template.periode === "Avant" ? -template.nbreJours : template.nbreJours;
+
+  const jumpDays = Math.abs(daysToAdd) > 0 ? Math.abs(daysToAdd) - 1 : 0;
+  const direction = daysToAdd >= 0 ? 1 : -1;
+
+  if (template.joursOuvrable || template.joursCalendaire) {
+    let currentDays = jumpDays;
+    while (currentDays > 0) {
+      baseDate.setDate(baseDate.getDate() + direction);
+      const dayOfWeek = baseDate.getDay();
+
+      if (dayOfWeek !== 0 && dayOfWeek !== 6 && !isHolidayCI(baseDate)) {
+        currentDays--;
+      }
+    }
+  } else {
+    baseDate.setDate(baseDate.getDate() + (direction * jumpDays));
+  }
+
+  return baseDate.toISOString().split('T')[0];
+};
+
 export default function MesureMensuellePage() {
     const today = new Date();
     const [month, setMonth] = useState(today.getMonth() + 1);
@@ -51,6 +167,17 @@ export default function MesureMensuellePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [selectedArmateur, setSelectedArmateur] = useState<string>("OOCL");
+    const [actionTemplates, setActionTemplates] = useState<any[]>([]);
+
+    const fetchTemplates = useCallback(async () => {
+        try {
+            const res = await fetch('/api/action-templates');
+            const data = await res.json();
+            if (Array.isArray(data)) setActionTemplates(data);
+        } catch (err) {
+            console.error(err);
+        }
+    }, []);
 
     const fetchMesures = useCallback(async () => {
         setLoading(true);
@@ -69,7 +196,8 @@ export default function MesureMensuellePage() {
 
     useEffect(() => {
         fetchMesures();
-    }, [fetchMesures]);
+        fetchTemplates();
+    }, [fetchMesures, fetchTemplates]);
 
     // Build unique armateur list from loaded voyages
     const armateurs = useMemo(() => {
@@ -91,17 +219,45 @@ export default function MesureMensuellePage() {
         );
     }, [voyages, selectedArmateur]);
 
-    const getActionDate = (v: Voyage, keywords: string[]) => {
-        const allActions = v.traitements.flatMap(t => t.actions);
-        const matches = allActions.filter(a =>
-            a.isComplete &&
-            a.dateCloture &&
-            (!a.armateur || a.armateur === selectedArmateur) &&
-            keywords.some(k => a.action.toLowerCase().includes(k.toLowerCase()))
-        );
-        if (matches.length === 0) return "-";
-        const sorted = matches.sort((a, b) => b.dateCloture!.localeCompare(a.dateCloture!));
-        return formatDate(sorted[0].dateCloture!);
+    const getActionInfo = (v: Voyage, keywords: string[]) => {
+        const allTraitements = v.traitements;
+        let bestMatch: { date: string, isOnTime: boolean, isLate: boolean } | null = null;
+        
+        for (const t of allTraitements) {
+            const matches = t.actions.filter(a =>
+                a.isComplete &&
+                a.dateCloture &&
+                (!a.armateur || a.armateur === selectedArmateur) &&
+                keywords.some(k => a.action.toLowerCase().includes(k.toLowerCase()))
+            );
+            
+            if (matches.length > 0) {
+                // sort by dateCloture desc
+                const sorted = matches.sort((a, b) => b.dateCloture!.localeCompare(a.dateCloture!));
+                const action = sorted[0];
+                const dateCloture = action.dateCloture!;
+                
+                // Calculate deadline
+                const deadlineStr = calculateDeadline(action.action, { ...t, voyage: v }, actionTemplates);
+                let isOnTime = true;
+                let isLate = false;
+                if (deadlineStr && dateCloture > deadlineStr) {
+                    isOnTime = false;
+                    isLate = true;
+                }
+                
+                if (!bestMatch || dateCloture > bestMatch.date) {
+                    bestMatch = { date: dateCloture, isOnTime, isLate };
+                }
+            }
+        }
+        
+        return bestMatch;
+    };
+
+    const getActionDateStr = (v: Voyage, keywords: string[]) => {
+        const info = getActionInfo(v, keywords);
+        return info ? formatDate(info.date) : "-";
     };
 
     const calculateRate = (v: Voyage) => {
@@ -114,13 +270,15 @@ export default function MesureMensuellePage() {
             ['Manifeste Export']
         ];
 
-        let completed = 0;
+        let completedOnTime = 0;
         required.forEach(keywords => {
-            const date = getActionDate(v, keywords);
-            if (date !== "-") completed++;
+            const info = getActionInfo(v, keywords);
+            if (info && info.isOnTime) {
+                completedOnTime++;
+            }
         });
 
-        const rate = (completed / required.length) * 100;
+        const rate = (completedOnTime / required.length) * 100;
         return `${rate.toFixed(0)}%`;
     };
 
@@ -259,24 +417,24 @@ export default function MesureMensuellePage() {
 
                                 <td className="px-4 py-4 text-slate-600 font-medium border-r border-slate-50 bg-amber-50/10">{formatDate(v.dateETA)}</td>
                                 <td className="px-4 py-4 text-slate-700 font-bold border-r border-slate-50 bg-amber-50/10">
-                                    {getActionDate(v, ['Top Import', 'TDI Import'])}
+                                    {getActionDateStr(v, ['Top Import', 'TDI Import'])}
                                 </td>
                                 <td className="px-4 py-4 text-slate-700 font-bold border-r border-slate-50 bg-amber-50/10">
-                                    {getActionDate(v, ['Fichier Compressé Import', 'ZIP Import', 'fichier import compresse'])}
+                                    {getActionDateStr(v, ['Fichier Compressé Import', 'ZIP Import', 'fichier import compresse'])}
                                 </td>
                                 <td className="px-4 py-4 text-slate-700 font-bold border-r border-slate-200 bg-amber-50/10">
-                                    {getActionDate(v, ['Manifeste Import', 'Douane-PAA'])}
+                                    {getActionDateStr(v, ['Manifeste Import', 'Douane-PAA'])}
                                 </td>
 
                                 <td className="px-4 py-4 text-slate-600 font-medium border-r border-slate-50 bg-blue-50/10">{formatDate(v.dateETD)}</td>
                                 <td className="px-4 py-4 text-slate-700 font-bold border-r border-slate-50 bg-blue-50/10">
-                                    {getActionDate(v, ['Top Export', 'TDI Export'])}
+                                    {getActionDateStr(v, ['Top Export', 'TDI Export'])}
                                 </td>
                                 <td className="px-4 py-4 text-slate-700 font-bold border-r border-slate-50 bg-blue-50/10">
-                                    {getActionDate(v, ['Fichier Compressé Export', 'ZIP Export', 'fichier export compresse'])}
+                                    {getActionDateStr(v, ['Fichier Compressé Export', 'ZIP Export', 'fichier export compresse'])}
                                 </td>
                                 <td className="px-4 py-4 text-slate-700 font-bold border-r border-slate-200 bg-blue-50/10">
-                                    {getActionDate(v, ['Manifeste Export'])}
+                                    {getActionDateStr(v, ['Manifeste Export'])}
                                 </td>
 
                                 <td className="px-6 py-4 border-r border-slate-50 text-center">
@@ -302,7 +460,7 @@ export default function MesureMensuellePage() {
                     <button
                         className="bg-emerald-600 text-white font-bold py-2 px-4 rounded-xl shadow-lg shadow-emerald-500/30 hover:bg-emerald-700 transition-all flex items-center gap-2 text-sm"
                         onClick={() => {
-                            window.location.href = `/api/mesures/export?month=${month}&year=${year}`;
+                            window.location.href = `/api/mesures/export?month=${month}&year=${year}&armateur=${encodeURIComponent(selectedArmateur)}`;
                         }}
                     >
                         <Download className="w-4 h-4" />

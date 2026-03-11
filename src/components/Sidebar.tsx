@@ -975,6 +975,8 @@ export function Sidebar() {
                                                                                     className="w-full p-1.5 border border-slate-300 rounded focus:outline-none focus:border-red-400 bg-white"
                                                                                 >
                                                                                     <option value="">-- Choisir un événement --</option>
+                                                                                    <option value="ETA" className="text-blue-600 font-bold">Arrivée Prévue du Navire (ETA)</option>
+                                                                                    <option value="ETD" className="text-indigo-600 font-bold">Départ Prévu du Navire (ETD)</option>
                                                                                     {actions.filter(a => a.isReferentiel && a.id !== action.id).map(a => (
                                                                                         <option key={a.id} value={a.id}>{a.name}</option>
                                                                                     ))}

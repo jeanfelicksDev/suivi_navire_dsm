@@ -12,18 +12,22 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
         const { id } = await params
         const body = await request.json()
-        const { isTermine } = body
+        const { isTermine, userId } = body
 
         const existingTraitement = await prisma.traitement.findUnique({ where: { id } });
         if (!existingTraitement) return NextResponse.json({ error: "Introuvable" }, { status: 404 });
 
-        if ((existingTraitement as any).userId && (existingTraitement as any).userId !== (session.user as any).id) {
+        if ((existingTraitement as any).userId && (existingTraitement as any).userId !== (session.user as any).id && (session.user as any).role !== 'ADMIN') {
             return NextResponse.json({ error: "Interdit. Seul le créateur peut modifier ce suivi." }, { status: 403 });
         }
 
+        const dataToUpdate: any = {}
+        if (isTermine !== undefined) dataToUpdate.isTermine = isTermine
+        if (userId !== undefined) dataToUpdate.userId = userId
+
         const updatedSuivi = await prisma.traitement.update({
             where: { id },
-            data: { isTermine },
+            data: dataToUpdate,
             include: {
                 navire: true,
                 voyage: true,

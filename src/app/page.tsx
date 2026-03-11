@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, X, Trash2, Check, CheckCircle, RefreshCcw, GripVertical, EyeOff, Eye, Search } from "lucide-react";
+import { Plus, X, Trash2, Check, CheckCircle, RefreshCcw, GripVertical, EyeOff, Eye, Search, ArrowRightLeft, LayoutList, Milestone, Circle, CheckCircle2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import type { NavireEnTraitement, Action } from "@/lib/types";
@@ -118,20 +118,29 @@ const calculateDeadline = (actionName: string, traitement: any, templates: any[]
   const template = templates.find((t: any) => t.name === actionName);
   if (!template || template.nbreJours == null || !template.evenementId) return null;
 
-  const refTemplate = templates.find((t: any) => t.id === template.evenementId);
-  if (!refTemplate) return null;
-
   let baseDateStr = null;
-  const refAction = traitement.actions.find((a: any) => a.action === refTemplate.name);
 
-  if (refAction && refAction.isComplete && refAction.dateCloture) {
-    baseDateStr = refAction.dateCloture;
-  } else {
-    const title = refTemplate.name.toUpperCase();
-    if (title.includes('ETA') && traitement.voyage?.dateETA) {
+  if (template.evenementId === 'ETA' || template.evenementId === 'ETD') {
+    if (template.evenementId === 'ETA' && traitement.voyage?.dateETA) {
       baseDateStr = traitement.voyage.dateETA;
-    } else if (title.includes('ETD') && traitement.voyage?.dateETD) {
+    } else if (template.evenementId === 'ETD' && traitement.voyage?.dateETD) {
       baseDateStr = traitement.voyage.dateETD;
+    }
+  } else {
+    const refTemplate = templates.find((t: any) => t.id === template.evenementId);
+    if (!refTemplate) return null;
+
+    const refAction = traitement.actions.find((a: any) => a.action === refTemplate.name);
+
+    if (refAction && refAction.isComplete && refAction.dateCloture) {
+      baseDateStr = refAction.dateCloture;
+    } else {
+      const title = refTemplate.name.toUpperCase();
+      if (title.includes('ETA') && traitement.voyage?.dateETA) {
+        baseDateStr = traitement.voyage.dateETA;
+      } else if (title.includes('ETD') && traitement.voyage?.dateETD) {
+        baseDateStr = traitement.voyage.dateETD;
+      }
     }
   }
 
@@ -201,7 +210,7 @@ function SortableAction({
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative rounded-xl p-3 shadow-sm border transition-all flex flex-col justify-between w-full sm:w-56 ${action.isComplete
+      className={`relative rounded-xl p-2 shadow-sm border transition-all flex flex-col justify-between w-full sm:w-48 ${action.isComplete
         ? 'bg-slate-100 border-slate-300 grayscale-[20%]'
         : 'bg-gradient-to-br from-blue-50 to-white border-blue-200 hover:shadow-md hover:-translate-y-0.5'
         }`}
@@ -218,7 +227,7 @@ function SortableAction({
             </button>
           )}
           <div className="flex flex-col">
-            <span className="text-[10px] text-slate-400 font-bold block leading-none mb-0.5">#{displayIndex}</span>
+            <span className="text-[10px] text-slate-400 font-bold block leading-none mb-0.5">N°{displayIndex}</span>
             <span className={`font-bold text-xs ${action.isComplete ? 'text-slate-500 line-through decoration-slate-400' : 'text-blue-900'}`}>{action.action}</span>
           </div>
         </div>
@@ -311,6 +320,109 @@ function SortableAction({
     </div>
   );
 }
+function TimelineView({ traitement, templates }: any) {
+  // Sort actions and group by name to create "steps"
+  const sortedActions = [...traitement.actions].sort((a, b) => (a.position || 0) - (b.position || 0));
+  
+  const groupedSteps: any[] = [];
+  sortedActions.forEach(action => {
+    let step = groupedSteps.find(g => g.name === action.action);
+    if (!step) {
+      step = { name: action.action, items: [] };
+      groupedSteps.push(step);
+    }
+    step.items.push(action);
+  });
+
+  // Sort groupedSteps by their definition order in templates
+  groupedSteps.sort((a, b) => {
+    const idxA = templates.findIndex((t: any) => t.name === a.name);
+    const idxB = templates.findIndex((t: any) => t.name === b.name);
+    // If not found in templates, push to the end
+    const safeIdxA = idxA === -1 ? 9999 : idxA;
+    const safeIdxB = idxB === -1 ? 9999 : idxB;
+    return safeIdxA - safeIdxB;
+  });
+
+  return (
+    <div className="py-6 px-4 relative w-full sm:max-w-5xl font-sans mt-4">
+      {/* Ligne verticale centrale */}
+      <div className="absolute left-[39px] sm:left-[47px] top-12 bottom-12 w-1.5 bg-slate-200 rounded-full" />
+      
+      <div className="flex flex-col gap-8 relative z-10 w-full pl-0">
+        {groupedSteps.map((step, idx) => {
+          const allComplete = step.items.every((a: any) => a.isComplete);
+          const anyComplete = step.items.some((a: any) => a.isComplete);
+          const isPending = !anyComplete;
+          const isPartial = anyComplete && !allComplete;
+
+          return (
+            <div key={idx} className="flex gap-4 sm:gap-6 items-start group w-full">
+               <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shrink-0 border-4 shadow-sm transition-transform duration-300 group-hover:scale-110 z-10 
+                 ${allComplete ? 'bg-emerald-100 border-emerald-400 text-emerald-600 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 
+                 isPartial ? 'bg-amber-100 border-amber-400 text-amber-600 shadow-[0_0_15px_rgba(245,158,11,0.3)]' : 
+                 'bg-slate-50 border-slate-200 text-slate-400 font-black sm:text-xl'}`}>
+                 {allComplete ? <CheckCircle2 className="w-6 h-6 sm:w-8 sm:h-8" /> : 
+                  isPartial ? <RefreshCcw className="w-5 h-5 sm:w-6 sm:h-6 animate-spin-slow" /> : 
+                  <span>{idx + 1}</span>}
+               </div>
+               
+               <div className={`bg-white rounded-2xl p-4 sm:p-5 shadow-sm border flex-1 hover:shadow-md transition-all ${
+                 allComplete ? 'border-emerald-100' : isPartial ? 'border-amber-100' : 'border-slate-100 opacity-80'
+               }`}>
+                  <h4 className="font-bold text-lg sm:text-xl text-slate-800 mb-3 sm:mb-4">
+                    <span className="text-slate-400 mr-2 text-sm sm:text-base font-bold uppercase tracking-wider">N°{idx + 1}</span>
+                    {step.name}
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                     {step.items.map((item: any, i: number) => {
+                        const deadline = calculateDeadline(item.action, traitement, templates);
+                        const isLate = deadline && !item.isComplete && deadline < new Date().toISOString().split('T')[0];
+
+                        return (
+                           <div key={i} className={`flex flex-col gap-1.5 p-3 rounded-xl border ${
+                             item.isComplete ? 'bg-emerald-50/50 border-emerald-200' : 
+                             isLate ? 'bg-red-50 border-red-200 shadow-sm' :
+                             'bg-slate-50 border-slate-200'
+                           }`}>
+                              <span className={`text-[11px] font-black uppercase tracking-wider ${item.armateur === 'Commune' ? 'text-indigo-600' : 'text-slate-700'}`}>
+                                {item.armateur || 'Global'}
+                              </span>
+                              
+                              {item.isComplete ? (
+                                <div className="flex items-center justify-between text-emerald-700 text-xs font-bold mt-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>Clôturé le {formatDate(item.dateCloture)}</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col gap-2 mt-1">
+                                  <span className="text-xs font-medium text-slate-500 italic flex items-center gap-1.5">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse" />
+                                    En attente
+                                  </span>
+                                  {deadline && (
+                                    <span className={`text-[10px] font-bold px-2 py-1 rounded shadow-sm self-start border ${isLate ? 'bg-red-100 text-red-700 border-red-300' : 'bg-white text-slate-600 border-slate-200'}`}>
+                                      Deadline: {formatDate(deadline)}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                           </div>
+                        );
+                     })}
+                  </div>
+               </div>
+            </div>
+          );
+        })}
+
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -318,6 +430,7 @@ export default function Home() {
   const router = useRouter();
   const [naviresEnTraitement, setNaviresEnTraitement] = useState<NavireEnTraitement[]>([]);
   const [hiddenActionIds, setHiddenActionIds] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<Record<string, 'board' | 'timeline'>>({});
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -391,7 +504,7 @@ export default function Home() {
       }
     }
   };
-  const [actionTemplates, setActionTemplates] = useState<{ id: string, name: string }[]>([]);
+  const [actionTemplates, setActionTemplates] = useState<{ id: string, name: string, type?: string }[]>([]);
   const [availableNavires, setAvailableNavires] = useState<{ id: string, nomNavire: string, armateurCoque: string, voyages: any[] }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -400,6 +513,12 @@ export default function Home() {
   const [adminUserFilter, setAdminUserFilter] = useState("all");
   const [armateurFilter, setArmateurFilter] = useState("all");
   const [armateurs, setArmateurs] = useState<{ id: string, nom: string }[]>([]);
+
+  // Transfer Modal State
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [selectedSuiviForTransfer, setSelectedSuiviForTransfer] = useState<NavireEnTraitement | null>(null);
+  const [targetUserId, setTargetUserId] = useState<string>("");
+  const [availableUsers, setAvailableUsers] = useState<{ id: string, email: string, profil: string }[]>([]);
 
   // Action Modal State
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
@@ -475,17 +594,31 @@ export default function Home() {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/users');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setAvailableUsers(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
+
   useEffect(() => {
     fetchSuivis();
     fetchTemplates();
     fetchNavires();
     fetchArmateurs();
+    fetchUsers();
 
     const handleUpdate = () => {
       fetchNavires();
       fetchTemplates();
       fetchSuivis();
       fetchArmateurs();
+      fetchUsers();
     };
 
     window.addEventListener('globalDataUpdate', handleUpdate);
@@ -699,6 +832,29 @@ export default function Home() {
     }
   };
 
+  const handleTransferSuivi = async () => {
+    if (!selectedSuiviForTransfer || !targetUserId) return;
+    try {
+      const res = await fetch(`/api/suivis/${selectedSuiviForTransfer.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: targetUserId })
+      });
+      if (res.ok) {
+        fetchSuivis();
+        setTransferModalOpen(false);
+        setTargetUserId("");
+        setSelectedSuiviForTransfer(null);
+      } else {
+        const errorData = await res.json();
+        alert(`Erreur: ${errorData.error || 'Impossible de transférer le dossier'}`);
+      }
+    } catch (error) {
+      console.error('Failed to transfer suivi:', error);
+      alert("Une erreur réseau est survenue.");
+    }
+  };
+
   const handleQuickUpdateVoyage = async (voyageId: string, data: any) => {
     try {
       const res = await fetch(`/api/voyages/${voyageId}`, {
@@ -848,7 +1004,7 @@ export default function Home() {
         <div className="absolute -bottom-20 right-1/3 w-[500px] h-[500px] rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #c7d2fe 0%, transparent 70%)' }} />
       </div>
 
-      <div className="max-w-7xl mx-auto px-8 pt-4 pb-8">
+      <div className="w-full 2xl:max-w-none mx-auto px-8 pt-4 pb-8">
         {/* Sticky Header Zone */}
         <div className="sticky top-0 z-40 bg-white/70 backdrop-blur-xl border-b border-slate-200/50 -mx-8 px-8 py-6 mb-8 shadow-[0_4px_30px_rgba(0,0,0,0.03)] transition-all">
           {/* Header */}
@@ -990,7 +1146,7 @@ export default function Home() {
                 />
 
                 {/* Bouton de suppression global du suivi */}
-                {(!traitement.userId || traitement.userId === (session?.user as any)?.id) && (
+                {(!traitement.userId || traitement.userId === (session?.user as any)?.id || (session?.user as any)?.role === 'ADMIN') && (
                   <button
                     onClick={() => handleDeleteSuivi(traitement.id)}
                     className="absolute top-3 right-3 w-9 h-9 bg-white border border-red-100 text-red-500 rounded-full flex items-center justify-center hover:bg-red-50 hover:border-red-500 hover:scale-110 transition-all z-20 shadow-sm"
@@ -1079,123 +1235,146 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className="ml-2 pt-0 w-full overflow-x-auto">
-                      <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={(e) => handleDragEnd(e, traitement.id)}
-                      >
-                        <SortableContext
-                          items={traitement.actions.map(a => a.id)}
-                          strategy={verticalListSortingStrategy}
+                    <div className="ml-2 pt-1 w-full overflow-x-auto pb-4">
+                      
+                      {/* Toggles pour Vue */}
+                      <div className="flex items-center gap-6 border-b border-slate-100 mb-6">
+                        <button
+                          onClick={() => setViewMode(prev => ({ ...prev, [traitement.id]: 'board' }))}
+                          className={`flex items-center gap-2 pb-2 text-xs font-bold transition-all border-b-2 ${viewMode[traitement.id] !== 'timeline' ? 'text-blue-600 border-blue-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}
                         >
-                          {(() => {
-                            // Bucket both visible and hidden actions by group (Commune or Armateur)
-                            const groups: Record<string, { visible: any[], hidden: any[] }> = {
-                              "Commune": { visible: [], hidden: [] }
-                            };
+                          <LayoutList className="w-4 h-4" />
+                          Vue en Palettes
+                        </button>
+                        <button
+                          onClick={() => setViewMode(prev => ({ ...prev, [traitement.id]: 'timeline' }))}
+                          className={`flex items-center gap-2 pb-2 text-xs font-bold transition-all border-b-2 ${viewMode[traitement.id] === 'timeline' ? 'text-indigo-600 border-indigo-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}
+                        >
+                          <Milestone className="w-4 h-4" />
+                          Parcours Ludique
+                        </button>
+                      </div>
 
-                            // Ensure all selected armateurs have a group (even if empty)
-                            if (traitement.selectedArmateurs) {
-                              traitement.selectedArmateurs.forEach(arm => {
-                                if (!groups[arm]) groups[arm] = { visible: [], hidden: [] };
-                              });
-                            }
+                      {viewMode[traitement.id] === 'timeline' ? (
+                        <TimelineView traitement={traitement} templates={actionTemplates} />
+                      ) : (
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={(e) => handleDragEnd(e, traitement.id)}
+                        >
+                          <SortableContext
+                            items={traitement.actions.map(a => a.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            {(() => {
+                              // Bucket both visible and hidden actions by group (Commune or Armateur)
+                              const groups: Record<string, { visible: any[], hidden: any[] }> = {
+                                "Commune": { visible: [], hidden: [] }
+                              };
 
-                            [...traitement.actions]
-                              .sort((a, b) => (a.position || 0) - (b.position || 0))
-                              .forEach(a => {
-                                const key = a.armateur || "Commune";
-                                if (!groups[key]) groups[key] = { visible: [], hidden: [] };
-                                if (hiddenActionIds.has(a.id)) {
-                                  groups[key].hidden.push(a);
-                                } else {
-                                  groups[key].visible.push(a);
-                                }
-                              });
+                              // Ensure all selected armateurs have a group (even if empty)
+                              if (traitement.selectedArmateurs) {
+                                traitement.selectedArmateurs.forEach(arm => {
+                                  if (!groups[arm]) groups[arm] = { visible: [], hidden: [] };
+                                });
+                              }
+
+                              [...traitement.actions]
+                                .sort((a, b) => (a.position || 0) - (b.position || 0))
+                                .forEach(a => {
+                                  const key = a.armateur || "Commune";
+                                  if (!groups[key]) groups[key] = { visible: [], hidden: [] };
+                                  if (hiddenActionIds.has(a.id)) {
+                                    groups[key].hidden.push(a);
+                                  } else {
+                                    groups[key].visible.push(a);
+                                  }
+                                });
 
 
-                            const renderActionsInGroup = (visible: any[], hidden: any[]) => {
-                              let displayIndexCounter = 0;
-                              return (
-                                <>
-                                  <div className="flex flex-wrap gap-4">
-                                    {visible.map(action => {
-                                      displayIndexCounter++;
-                                      return (
-                                        <SortableAction
-                                          key={action.id}
-                                          action={action}
-                                          traitementId={traitement.id}
-                                          activeClotureInput={activeClotureInput}
-                                          setActiveClotureInput={setActiveClotureInput}
-                                          actionClotureDates={actionClotureDates}
-                                          setActionClotureDates={setActionClotureDates}
-                                          handleCloseAction={handleCloseAction}
-                                          handleReactivateAction={handleReactivateAction}
-                                          handleDeleteAction={handleDeleteAction}
-                                          toggleHideAction={toggleHideAction}
-                                          deadline={calculateDeadline(action.action, traitement, actionTemplates)}
-                                          isReadOnly={traitement.userId && traitement.userId !== (session?.user as any)?.id}
-                                          displayIndex={displayIndexCounter}
-                                        />
-                                      );
-                                    })}
-                                  </div>
-                                  {hidden.length > 0 && (
-                                    <button
-                                      onClick={() => {
-                                        const ids = hidden.map(h => h.id);
-                                        setHiddenActionIds(prev => {
-                                          const next = new Set(prev);
-                                          ids.forEach(id => next.delete(id));
-                                          localStorage.setItem('hiddenActionIds', JSON.stringify(Array.from(next)));
-                                          return next;
-                                        });
-                                      }}
-                                      className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
-                                    >
-                                      <Eye className="w-3.5 h-3.5" />
-                                      {hidden.length} action{hidden.length > 1 ? 's' : ''} masquée{hidden.length > 1 ? 's' : ''}
-                                    </button>
-                                  )}
-                                </>
-                              );
-                            };
-
-                            return (
-                              <div className="flex flex-col gap-6 w-full">
-                                {/* Zone Commune */}
-                                {groups["Commune"] && (groups["Commune"].visible.length > 0 || groups["Commune"].hidden.length > 0) && (
-                                  <div className="space-y-3">
-                                    <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Actions Communes</h5>
-                                    {renderActionsInGroup(groups["Commune"].visible, groups["Commune"].hidden)}
-                                  </div>
-                                )}
-
-                                {/* Zones Armateurs */}
-                                {Object.entries(groups)
-                                  .filter(([k]) => k !== "Commune")
-                                  .map(([armateurName, data]) => (
-                                    <div key={armateurName} className="space-y-3 border-l-2 border-indigo-100 pl-4 py-1">
-                                      <h5 className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                                        {armateurName}
-                                      </h5>
-                                      {renderActionsInGroup(data.visible, data.hidden)}
+                              const renderActionsInGroup = (visible: any[], hidden: any[]) => {
+                                let displayIndexCounter = 0;
+                                return (
+                                  <>
+                                    <div className="flex flex-wrap gap-4">
+                                      {visible.map(action => {
+                                        displayIndexCounter++;
+                                        return (
+                                          <SortableAction
+                                            key={action.id}
+                                            action={action}
+                                            traitementId={traitement.id}
+                                            activeClotureInput={activeClotureInput}
+                                            setActiveClotureInput={setActiveClotureInput}
+                                            actionClotureDates={actionClotureDates}
+                                            setActionClotureDates={setActionClotureDates}
+                                            handleCloseAction={handleCloseAction}
+                                            handleReactivateAction={handleReactivateAction}
+                                            handleDeleteAction={handleDeleteAction}
+                                            toggleHideAction={toggleHideAction}
+                                            deadline={calculateDeadline(action.action, traitement, actionTemplates)}
+                                            isReadOnly={traitement.userId && traitement.userId !== (session?.user as any)?.id}
+                                            displayIndex={displayIndexCounter}
+                                          />
+                                        );
+                                      })}
                                     </div>
-                                  ))}
-                              </div>
-                            );
-                          })()}
+                                    {hidden.length > 0 && (
+                                      <button
+                                        onClick={() => {
+                                          const ids = hidden.map(h => h.id);
+                                          setHiddenActionIds(prev => {
+                                            const next = new Set(prev);
+                                            ids.forEach(id => next.delete(id));
+                                            localStorage.setItem('hiddenActionIds', JSON.stringify(Array.from(next)));
+                                            return next;
+                                          });
+                                        }}
+                                        className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                        {hidden.length} action{hidden.length > 1 ? 's' : ''} masquée{hidden.length > 1 ? 's' : ''}
+                                      </button>
+                                    )}
+                                  </>
+                                );
+                              };
 
-                        </SortableContext>
-                      </DndContext>
+                              return (
+                                <div className="flex flex-col gap-6 w-full">
+                                  {/* Zone Commune */}
+                                  {groups["Commune"] && (groups["Commune"].visible.length > 0 || groups["Commune"].hidden.length > 0) && (
+                                    <div className="space-y-3">
+                                      <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Actions Communes</h5>
+                                      {renderActionsInGroup(groups["Commune"].visible, groups["Commune"].hidden)}
+                                    </div>
+                                  )}
+
+                                  {/* Zones Armateurs */}
+                                  {Object.entries(groups)
+                                    .filter(([k]) => k !== "Commune")
+                                    .map(([armateurName, data]) => (
+                                      <div key={armateurName} className="space-y-3 border-l-2 border-indigo-100 pl-4 py-1">
+                                        <h5 className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest flex items-center gap-2">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                          {armateurName}
+                                        </h5>
+                                        {renderActionsInGroup(data.visible, data.hidden)}
+                                      </div>
+                                    ))}
+                                </div>
+                              );
+                            })()}
+
+                          </SortableContext>
+                        </DndContext>
+                      )}
                     </div>
 
                   </div>
 
-                  <div className="flex flex-col items-end justify-between ml-8 min-w-[200px] pr-10">
+                  <div className="flex flex-col items-end justify-between ml-8 min-w-[200px]">
                     {/* Jauge de progression */}
                     {(() => {
                       const total = traitement.actions.length;
@@ -1203,7 +1382,7 @@ export default function Home() {
                       const percent = total > 0 ? Math.round((done / total) * 100) : 0;
 
                       return (
-                        <div className="w-full pt-0">
+                        <div className="w-full pt-1 pr-12">
                           <div className="flex justify-between items-center mb-1">
                             <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Progression</span>
                             <span className="text-xs font-bold text-amber-600">{percent}%</span>
@@ -1218,15 +1397,31 @@ export default function Home() {
                       );
                     })()}
 
-                    {!traitement.isTermine && (!traitement.userId || traitement.userId === (session?.user as any)?.id) && (
-                      <button
-                        onClick={() => openActionModal(traitement)}
-                        className="px-6 py-2 bg-blue-600 text-white rounded-full text-xs hover:bg-blue-700 transition-all font-bold shadow-md shadow-blue-500/20 hover:shadow-blue-500/30 flex items-center gap-2"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Action
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2 -mr-2">
+                      {!traitement.isTermine && (!traitement.userId || traitement.userId === (session?.user as any)?.id) && (
+                        <button
+                          onClick={() => openActionModal(traitement)}
+                          className="px-6 py-2 bg-blue-600 text-white rounded-full text-xs hover:bg-blue-700 transition-all font-bold shadow-md shadow-blue-500/20 hover:shadow-blue-500/30 flex items-center gap-2 whitespace-nowrap"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Action
+                        </button>
+                      )}
+
+                      {(!traitement.userId || traitement.userId === (session?.user as any)?.id || (session?.user as any)?.role === 'ADMIN') && (
+                        <button
+                          onClick={() => {
+                            setSelectedSuiviForTransfer(traitement);
+                            setTargetUserId("");
+                            setTransferModalOpen(true);
+                          }}
+                          className="w-8 h-8 bg-white border border-blue-200 text-blue-500 rounded-full flex items-center justify-center hover:bg-blue-50 hover:border-blue-400 hover:shadow-md transition-all shrink-0"
+                          title="Transférer ce dossier (ex: congé)"
+                        >
+                          <ArrowRightLeft className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1442,9 +1637,24 @@ export default function Home() {
                       return (
                         <button
                           key={action.id}
-                          onClick={() => {
-                            setActionSelectionStep({ actionName: action.name });
-                            setSelectedTargetsForAction([]);
+                          onClick={async () => {
+                            if (action.type === "Commune") {
+                              try {
+                                const res = await fetch(`/api/suivis/${selectedTraitementForAction?.id}/actions`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ action: action.name, targets: ["TOUS"] })
+                                });
+                                if (res.ok) {
+                                  window.dispatchEvent(new Event('globalDataUpdate'));
+                                }
+                              } catch (error) {
+                                console.error('Failed to add action:', error);
+                              }
+                            } else {
+                              setActionSelectionStep({ actionName: action.name });
+                              setSelectedTargetsForAction([]);
+                            }
                           }}
                           className={`w-full text-left px-3 py-2 rounded-lg border transition-all flex justify-between items-center gap-2 ${isAlreadyAdded
                             ? 'bg-slate-50 border-slate-200 text-slate-500 hover:border-blue-300 hover:bg-blue-50'
@@ -1583,6 +1793,68 @@ export default function Home() {
           </div>
         )
       }
-    </main >
+
+      {/* Modal Transférer Dossier */}
+      {
+        transferModalOpen && selectedSuiviForTransfer && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] animate-fade-in text-sm">
+            <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-blue-200 overflow-hidden">
+              <div className="flex justify-between items-center p-4 border-b border-slate-200 bg-blue-50">
+                <h3 className="font-bold text-blue-900 text-base">Transférer le Dossier</h3>
+                <button
+                  onClick={() => setTransferModalOpen(false)}
+                  className="p-1.5 hover:bg-blue-100 rounded-full transition-colors text-blue-700"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-4 space-y-4 text-black">
+                <p className="text-sm font-medium text-slate-600">
+                  Transférez ce dossier à un(e) collègue pour qu'il/elle en assure le suivi (ex : pendant vos congés).
+                </p>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Navire / Voyage</span>
+                  <span className="font-bold text-slate-800">{selectedSuiviForTransfer.navire.nomNavire} - {selectedSuiviForTransfer.voyage.numVoyage}</span>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-sm font-bold block mb-1">Sélectionner un collaborateur :</label>
+                  <select
+                    value={targetUserId}
+                    onChange={(e) => setTargetUserId(e.target.value)}
+                    className="w-full p-2 border border-blue-400 rounded bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none transition-colors"
+                  >
+                    <option value="">-- Choisir un utilisateur --</option>
+                    {availableUsers
+                      .filter(user => user.id !== (session?.user as any)?.id) // Exclude current user
+                      .map(user => (
+                        <option key={user.id} value={user.id}>
+                          {user.email} {user.profil === 'ADMIN' ? '(Admin)' : ''}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                  <button
+                    onClick={() => setTransferModalOpen(false)}
+                    className="px-5 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl font-bold transition"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleTransferSuivi}
+                    disabled={!targetUserId}
+                    className="px-5 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-xl font-bold transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    Transférer <ArrowRightLeft className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+    </main>
   );
 }

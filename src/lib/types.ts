@@ -19,6 +19,7 @@ export interface Action {
     isComplete: boolean;
     dateCloture?: string;
     armateur?: string | null;
+    position?: number;
 }
 
 
