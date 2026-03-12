@@ -1238,7 +1238,9 @@ export default function Home() {
 
                       <div className="flex flex-col justify-center">
                         <span className="text-xl font-bold uppercase">{traitement.navire.nomNavire}</span>
-                        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mt-0.5">Navire</span>
+                        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mt-0.5">
+                          Navire <span className="text-slate-500 normal-case">({traitement.navire.armateurCoque})</span>
+                        </span>
                       </div>
                       <div className="flex flex-col">
                         <span className="text-xl font-bold uppercase">{traitement.voyage.numVoyage}</span>
