@@ -564,6 +564,7 @@ export default function Home() {
   const [modalStep, setModalStep] = useState(1);
   const [availableArmateursForVoyage, setAvailableArmateursForVoyage] = useState<string[]>([]);
   const [selectedArmateursForDossier, setSelectedArmateursForDossier] = useState<string[]>([]);
+  const [typeNavire, setTypeNavire] = useState<'coque' | 'slotte' | 'tramp'>('coque');
 
 
   const fetchSuivis = async () => {
@@ -986,6 +987,11 @@ export default function Home() {
       return;
     }
 
+    if (!typeNavire) {
+      alert("Veuillez sélectionner le type de navire.");
+      return;
+    }
+
     // Vérifier si le combo navire + voyage existe déjà
     const alreadyExists = naviresEnTraitement.some(
       t => t.navire.nomNavire === nomNavire && t.voyage.numVoyage === numVoyage
@@ -1007,7 +1013,8 @@ export default function Home() {
           numVoyage,
           dateETA,
           dateETD,
-          selectedArmateurs: selectedArmateursForDossier
+          selectedArmateurs: selectedArmateursForDossier,
+          typeNavire,
         })
       });
 
@@ -1026,6 +1033,7 @@ export default function Home() {
         setDateETA("");
         setDateETD("");
         setSelectedArmateursForDossier([]);
+        setTypeNavire('coque');
       } else {
         const errorData = await res.json();
         alert(`Erreur lors de l'enregistrement : ${errorData.error || 'Erreur inconnue'}`);
@@ -1626,6 +1634,63 @@ export default function Home() {
                           </div>
                         </label>
                       ))}
+                    </div>
+
+                    {/* ── Type de navire ─────────────────────────────── */}
+                    <div className="space-y-2 pt-2 border-t border-slate-200">
+                      <p className="text-sm font-bold text-slate-700">Type de navire <span className="text-red-500">*</span></p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {([
+                          { value: 'coque',  label: 'Ligne Rég.\nCoque',  icon: '🚢', color: 'blue'   },
+                          { value: 'slotte', label: 'Ligne Rég.\nSlotté', icon: '📦', color: 'violet' },
+                          { value: 'tramp',  label: 'Tramp',              icon: '⚓', color: 'amber'  },
+                        ] as const).map(opt => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setTypeNavire(opt.value)}
+                            className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all text-center
+                              ${typeNavire === opt.value
+                                ? opt.color === 'blue'   ? 'border-blue-500 bg-blue-50 text-blue-800'
+                                : opt.color === 'violet' ? 'border-violet-500 bg-violet-50 text-violet-800'
+                                :                          'border-amber-500 bg-amber-50 text-amber-800'
+                                : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50'
+                              }`}
+                          >
+                            <span className="text-xl">{opt.icon}</span>
+                            <span className="text-[10px] font-bold leading-tight whitespace-pre-line">{opt.label}</span>
+                            {typeNavire === opt.value && (
+                              <span className="text-[8px] font-bold uppercase tracking-wider opacity-70">✓ Sélectionné</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Prévisualisation des actions */}
+                      {typeNavire && (
+                        <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Actions qui seront créées ({typeNavire === 'coque' ? 12 : typeNavire === 'slotte' ? 12 : 0} par armateur) :
+                          </p>
+                          {typeNavire === 'coque' && (
+                            <div className="flex flex-wrap gap-1">
+                              {['Attente Accostage','Fichier XML','Fichier compressé','Docs DGX','ID Voyage','Fichier sydam corrigé','Vérification Fiche TCs','Manifeste imp + Récap','Manifeste Export + Récap','Fichier XML Export','Fichier Zip Export','Copies BLs Export'].map((a, i) => (
+                                <span key={i} className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">{a}</span>
+                              ))}
+                            </div>
+                          )}
+                          {typeNavire === 'slotte' && (
+                            <div className="flex flex-wrap gap-1">
+                              {['Attente Accostage','Fichier XML','Fichier compressé','ID Guce','Ref Sydam','Fichier sydam corrigé','Vérification Fiche TCs','Manifeste imp + Récap','Manifeste Export + Récap','Fichier XML Export','Fichier Zip Export','Copies BLs Export'].map((a, i) => (
+                                <span key={i} className="text-[9px] bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded font-medium">{a}</span>
+                              ))}
+                            </div>
+                          )}
+                          {typeNavire === 'tramp' && (
+                            <p className="text-[10px] text-amber-600 italic">Les actions Tramp seront ajoutées ultérieurement.</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

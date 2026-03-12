@@ -75,6 +75,7 @@ model Traitement {
   createdAt         DateTime @default(now())
   userId            String?
   selectedArmateurs String[] // Stores the list of armateurs selected for this suivi
+  typeNavire        String?  // 'coque' | 'slotte' | 'tramp'
   actions           Action[]
   navire            Navire   @relation(fields: [navireId], references: [id], onDelete: Cascade)
   user              User?    @relation(fields: [userId], references: [id], onDelete: Cascade)

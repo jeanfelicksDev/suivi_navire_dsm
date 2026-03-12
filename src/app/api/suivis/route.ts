@@ -7,6 +7,40 @@ import { authOptions } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic'
 
+// ── Listes d'actions par type de navire ─────────────────────────────────────
+const ACTIONS_BY_TYPE: Record<string, string[]> = {
+    coque: [
+        'Attente Accostage',
+        'Fichier XML',
+        'Fichier compressé',
+        'Docs DGX',
+        'ID Voyage',
+        'Fichier sydam corrigé',
+        'Vérification Fiche TCs',
+        'Manifeste imp + Récap',
+        'Manifeste Export + Récap',
+        'Fichier XML Export',
+        'Fichier Zip Export',
+        'Copies BLs Export',
+    ],
+    slotte: [
+        'Attente Accostage',
+        'Fichier XML',
+        'Fichier compressé',
+        'ID Guce',
+        'Ref Sydam',
+        'Fichier sydam corrigé',
+        'Vérification Fiche TCs',
+        'Manifeste imp + Récap',
+        'Manifeste Export + Récap',
+        'Fichier XML Export',
+        'Fichier Zip Export',
+        'Copies BLs Export',
+    ],
+    tramp: [],
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 export async function GET() {
     try {
         const session = await getServerSession(authOptions);
@@ -54,7 +88,16 @@ const toTitleCase = (str: string) => {
 export async function POST(request: Request) {
     try {
         const body = await request.json()
-        const { nomNavire: rawNomNavire, armateurCoque, numVoyage: rawNumVoyage, dateETA, dateETD, selectedArmateurs } = body
+        const {
+            nomNavire: rawNomNavire,
+            armateurCoque,
+            numVoyage: rawNumVoyage,
+            dateETA,
+            dateETD,
+            selectedArmateurs,
+            typeNavire = 'coque',   // 'coque' | 'slotte' | 'tramp'
+        } = body
+
         // Normalize: Title Case
         const nomNavire = toTitleCase(rawNomNavire)
         const numVoyage = toTitleCase(rawNumVoyage)
@@ -112,26 +155,31 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Un suivi est déjà en cours pour ce voyage dans votre espace.' }, { status: 400 })
         }
 
-        // 4. Create Traitement with actions from templates (Only common actions by default)
-        const templates = await prisma.actionTemplate.findMany({
-            where: {
-                type: "Commune"
-            }
+        // 4. Build actions per armateur based on typeNavire
+        const actionList = ACTIONS_BY_TYPE[typeNavire] ?? [];
+        const armateurs: string[] = Array.isArray(selectedArmateurs) ? selectedArmateurs : [];
+
+        const actionsToCreate: { action: string; armateur: string | null; isComplete: boolean; position: number }[] = [];
+
+        armateurs.forEach((arm) => {
+            actionList.forEach((actionName, index) => {
+                actionsToCreate.push({
+                    action: actionName,
+                    armateur: arm,
+                    isComplete: false,
+                    position: index,
+                });
+            });
         });
-        const actionsToCreate = templates.map(template => ({
-            action: template.name,
-            armateur: null,
-            isComplete: false,
-            position: template.position || 0,
-        }));
 
-
+        // 5. Create Traitement with actions
         const suivi = await prisma.traitement.create({
             data: {
                 navireId: navire.id,
                 voyageId: voyage.id,
                 userId: userId as string,
-                selectedArmateurs: selectedArmateurs || [],
+                selectedArmateurs: armateurs,
+                typeNavire,
                 actions: {
                     create: actionsToCreate
                 }
@@ -142,7 +190,6 @@ export async function POST(request: Request) {
                 actions: true,
             }
         })
-
 
         // Initial Excel update
         updateExcelForVoyage(voyage.id).catch(err => console.error('Excel update error:', err));

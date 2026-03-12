@@ -20,6 +20,7 @@ export interface Action {
     dateCloture?: string;
     armateur?: string | null;
     position?: number;
+    numSydam?: string | null;
 }
 
 
@@ -30,6 +31,7 @@ export interface NavireEnTraitement {
     voyage: Voyage;
     actions: Action[];
     selectedArmateurs?: string[] | null;
+    typeNavire?: string | null;
     user?: { email: string, service: string, profil: string } | null;
     createdAt: string;
     isTermine?: boolean;
