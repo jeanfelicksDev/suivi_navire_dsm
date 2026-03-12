@@ -90,6 +90,7 @@ model Action {
   dateCloture  String?
   position     Int        @default(0)
   armateur     String?
+  numSydam     String?
   traitement   Traitement @relation(fields: [traitementId], references: [id], onDelete: Cascade)
 }
 

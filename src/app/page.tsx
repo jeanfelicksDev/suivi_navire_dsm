@@ -182,6 +182,8 @@ function SortableAction({
   setActiveClotureInput,
   actionClotureDates,
   setActionClotureDates,
+  actionSydamNumbers,
+  setActionSydamNumbers,
   handleCloseAction,
   handleReactivateAction,
   handleDeleteAction,
@@ -289,9 +291,26 @@ function SortableAction({
           <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest block mb-0.5">
             ✓ Terminée {action.dateCloture && `(${formatDate(action.dateCloture)})`}
           </span>
+          {action.numSydam && (
+            <span className="text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded uppercase tracking-wide block mt-0.5">
+              SYDAM : {action.numSydam}
+            </span>
+          )}
         </div>
       ) : activeClotureInput === `${traitementId}-${action.id}` ? (
         <div className="flex flex-col gap-1.5 mt-1 pt-2 border-t border-blue-100 animate-fade-in">
+          {action.action?.toLowerCase().includes('sydam') && (
+            <>
+              <span className="text-[10px] text-blue-700 font-bold">N° Sydam <span className="text-red-500">*</span></span>
+              <input
+                type="text"
+                value={actionSydamNumbers[`${traitementId}-${action.id}`] || ''}
+                onChange={(e) => setActionSydamNumbers({ ...actionSydamNumbers, [`${traitementId}-${action.id}`]: e.target.value.toUpperCase() })}
+                placeholder="Ex: SYD-2026-001"
+                className="w-full p-1.5 border border-blue-400 rounded focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none text-[10px] text-blue-900 bg-white font-bold uppercase"
+              />
+            </>
+          )}
           <span className="text-[10px] text-slate-500 font-bold">Date clôture :</span>
           <div className="flex items-center gap-1.5">
             <input
@@ -527,6 +546,7 @@ export default function Home() {
   const [actionSelectionStep, setActionSelectionStep] = useState<{ actionName: string } | null>(null);
   const [selectedTargetsForAction, setSelectedTargetsForAction] = useState<string[]>([]);
   const [actionClotureDates, setActionClotureDates] = useState<Record<string, string>>({});
+  const [actionSydamNumbers, setActionSydamNumbers] = useState<Record<string, string>>({});
   const [activeClotureInput, setActiveClotureInput] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -705,11 +725,24 @@ export default function Home() {
       return;
     }
 
+    // Vérifier si c'est une action Sydam
+    const traitement = naviresEnTraitement.find(t => t.id === traitementId);
+    const targetAction = traitement?.actions.find(a => a.id === actionId);
+    const isSydam = targetAction?.action?.toLowerCase().includes('sydam');
+    const sydamNumber = actionSydamNumbers[actionKey];
+    if (isSydam && !sydamNumber?.trim()) {
+      alert("Veuillez renseigner le numéro Sydam avant de valider la clôture.");
+      return;
+    }
+
     try {
+      const body: any = { isComplete: true, dateCloture: actionDateCloture };
+      if (isSydam && sydamNumber?.trim()) body.numSydam = sydamNumber.trim().toUpperCase();
+
       const res = await fetch(`/api/actions/${actionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isComplete: true, dateCloture: actionDateCloture })
+        body: JSON.stringify(body)
       });
 
       if (res.ok) {
@@ -1199,6 +1232,16 @@ export default function Home() {
                                   </span>
                                 )}
                               </div>
+                              {(() => {
+                                const sydamAction = traitement.actions.find(
+                                  (a: any) => a.action?.toLowerCase().includes('sydam') && a.isComplete && (a as any).numSydam
+                                );
+                                return sydamAction ? (
+                                  <span className="text-[9px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded uppercase tracking-wide border border-blue-200">
+                                    SYDAM : {(sydamAction as any).numSydam}
+                                  </span>
+                                ) : null;
+                              })()}
                               <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mt-0.5">Date ETA</span>
                             </>
                           );
@@ -1309,6 +1352,8 @@ export default function Home() {
                                             setActiveClotureInput={setActiveClotureInput}
                                             actionClotureDates={actionClotureDates}
                                             setActionClotureDates={setActionClotureDates}
+                                            actionSydamNumbers={actionSydamNumbers}
+                                            setActionSydamNumbers={setActionSydamNumbers}
                                             handleCloseAction={handleCloseAction}
                                             handleReactivateAction={handleReactivateAction}
                                             handleDeleteAction={handleDeleteAction}

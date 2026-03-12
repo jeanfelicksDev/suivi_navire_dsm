@@ -1095,6 +1095,7 @@ export function Sidebar() {
                                                 onChange={e => setNewNavireNom(toTitleCase(e.target.value))}
                                                 className="flex-1 p-3 border border-slate-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none min-w-[200px] uppercase"
                                                 placeholder="Nom du navire... (ex: MSC ALINA)"
+                                                required
                                             />
                                             <Combobox value={newNavireArmateur} onChange={handleSelectArmateur}>
                                                 <div className="relative flex-1 min-w-[200px]">

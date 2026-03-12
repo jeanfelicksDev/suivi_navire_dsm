@@ -13,7 +13,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
         const { id } = await params
         const body = await request.json()
-        const { isComplete, dateCloture } = body
+        const { isComplete, dateCloture, numSydam } = body
 
         const existingAction = await prisma.action.findUnique({ where: { id }, include: { traitement: true } });
         if (!existingAction) return NextResponse.json({ error: "Introuvable" }, { status: 404 });
@@ -22,12 +22,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             return NextResponse.json({ error: "Interdit. Seul le créateur peut modifier cette action." }, { status: 403 });
         }
 
+        const dataToUpdate: any = {
+            isComplete,
+            dateCloture: dateCloture || null,
+        };
+        if (numSydam !== undefined) dataToUpdate.numSydam = numSydam || null;
+
         const updatedAction = await prisma.action.update({
             where: { id },
-            data: {
-                isComplete,
-                dateCloture: dateCloture || null,
-            },
+            data: dataToUpdate,
             include: {
                 traitement: {
                     include: {
