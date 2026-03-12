@@ -1168,11 +1168,11 @@ export default function Home() {
                       )}
 
                       <div className="flex flex-col justify-center">
-                        <span className="text-xl font-bold">{traitement.navire.nomNavire}</span>
+                        <span className="text-xl font-bold uppercase">{traitement.navire.nomNavire}</span>
                         <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mt-0.5">Navire</span>
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-xl font-bold">{traitement.voyage.numVoyage}</span>
+                        <span className="text-xl font-bold uppercase">{traitement.voyage.numVoyage}</span>
                         <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mt-0.5">N° Voyage</span>
                       </div>
                       <div className="flex flex-col">
@@ -1224,7 +1224,7 @@ export default function Home() {
                                 </button>
                                 {departAction && (
                                   <span className="text-[9px] bg-sky-100 text-sky-700 font-bold px-1.5 py-0.5 rounded uppercase tracking-wide">
-                                    ✓ Parti
+                                    ✓ Appareillé
                                   </span>
                                 )}
                               </div>
@@ -1455,12 +1455,12 @@ export default function Home() {
                       <select
                         value={selectedNavireId}
                         onChange={e => handleSelectNavire(e.target.value)}
-                        className="w-full p-2 border border-blue-400 rounded bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none transition-colors"
+                        className="w-full p-2 border border-blue-400 rounded bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none transition-colors uppercase"
                         required
                       >
                         <option value="">-- Choisir un navire --</option>
                         {availableNavires.map(n => (
-                          <option key={n.id} value={n.id}>{n.nomNavire}</option>
+                          <option key={n.id} value={n.id} className="uppercase">{n.nomNavire}</option>
                         ))}
                       </select>
                     </div>
@@ -1469,13 +1469,13 @@ export default function Home() {
                       <select
                         value={selectedVoyageId}
                         onChange={e => handleSelectVoyage(e.target.value)}
-                        className="w-full p-2 border border-blue-400 rounded bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none transition-colors disabled:bg-slate-100 disabled:border-slate-300 disabled:cursor-not-allowed"
+                        className="w-full p-2 border border-blue-400 rounded bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none transition-colors disabled:bg-slate-100 disabled:border-slate-300 disabled:cursor-not-allowed uppercase"
                         required
                         disabled={!selectedNavireId}
                       >
                         <option value="">-- Choisir un voyage --</option>
                         {availableNavires.find(n => n.id === selectedNavireId)?.voyages?.map((v: any) => (
-                          <option key={v.id} value={v.id}>{v.numVoyage}</option>
+                          <option key={v.id} value={v.id} className="uppercase">{v.numVoyage}</option>
                         ))}
                       </select>
                     </div>
