@@ -208,11 +208,14 @@ function SortableAction({
     opacity: isDragging ? 0.3 : (action.isComplete ? 0.75 : 1),
   };
 
+  const isSydamAction = action.action?.toLowerCase().includes('sydam');
+  const isClotureOpen = activeClotureInput === `${traitementId}-${action.id}`;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative rounded-xl p-2 shadow-sm border transition-all flex flex-col justify-between w-full sm:w-48 ${action.isComplete
+      className={`relative rounded-xl p-2 shadow-sm border transition-all flex flex-col justify-between w-full ${isClotureOpen && isSydamAction ? 'sm:w-64' : 'sm:w-48'} ${action.isComplete
         ? 'bg-slate-100 border-slate-300 grayscale-[20%]'
         : 'bg-gradient-to-br from-blue-50 to-white border-blue-200 hover:shadow-md hover:-translate-y-0.5'
         }`}
@@ -299,15 +302,15 @@ function SortableAction({
         </div>
       ) : activeClotureInput === `${traitementId}-${action.id}` ? (
         <div className="flex flex-col gap-1.5 mt-1 pt-2 border-t border-blue-100 animate-fade-in">
-          {action.action?.toLowerCase().includes('sydam') && (
+          {isSydamAction && (
             <>
               <span className="text-[10px] text-blue-700 font-bold">N° Sydam <span className="text-red-500">*</span></span>
               <input
                 type="text"
                 value={actionSydamNumbers[`${traitementId}-${action.id}`] || ''}
                 onChange={(e) => setActionSydamNumbers({ ...actionSydamNumbers, [`${traitementId}-${action.id}`]: e.target.value.toUpperCase() })}
-                placeholder="Ex: SYD-2026-001"
-                className="w-full p-1.5 border border-blue-400 rounded focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none text-[10px] text-blue-900 bg-white font-bold uppercase"
+                placeholder="Ex: SYD20260001"
+                className="w-full p-1.5 border border-blue-400 rounded focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none text-[10px] text-blue-900 bg-blue-50 font-bold uppercase tracking-wider"
               />
             </>
           )}
@@ -733,6 +736,39 @@ export default function Home() {
     if (isSydam && !sydamNumber?.trim()) {
       alert("Veuillez renseigner le numéro Sydam avant de valider la clôture.");
       return;
+    }
+
+    // ---- Contrôle de séquencement par position ----
+    // Une action ne peut être clôturée si une action de position inférieure
+    // dans le même groupe (même armateur) n'est pas encore clôturée.
+    if (traitement && targetAction) {
+      const targetPosition = (targetAction as any).position ?? 0;
+      const targetArmateur = (targetAction as any).armateur || 'Commune';
+
+      // Trouver toutes les actions du même groupe avec une position inférieure non clôturées
+      const blockers = traitement.actions.filter((a: any) => {
+        const aArmateur = a.armateur || 'Commune';
+        // Même groupe d'armateur
+        if (aArmateur !== targetArmateur) return false;
+        // Position strictement inférieure
+        if ((a.position ?? 0) >= targetPosition) return false;
+        // Non clôturée
+        if (a.isComplete) return false;
+        // Ce n'est pas l'action elle-même
+        if (a.id === actionId) return false;
+        return true;
+      });
+
+      if (blockers.length > 0) {
+        const blockerNames = blockers
+          .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+          .map((a: any) => `• N°${(a.position ?? 0) + 1} — ${a.action}`)
+          .join('\n');
+        alert(
+          `Impossible de clôturer cette action.\n\nL'action suivante doit être clôturée en premier :\n${blockerNames}`
+        );
+        return;
+      }
     }
 
     try {
